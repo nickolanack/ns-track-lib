@@ -1,0 +1,31 @@
+{
+  "name": "ns-track-lib",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/MapViewRenderer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "nativescript": {
+    "platforms": {
+      "android": "4.0.0",
+      "ios": "4.0.0"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nickolanack/tns-mobile-data-collector.git"
+  },
+  "keywords": [
+  ],
+  "author": "Nick Blackwell",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nickolanack/tns-mobile-data-collector/issues"
+  },
+  "homepage": "https://github.com/nickolanack/tns-mobile-data-collector#readme",
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}

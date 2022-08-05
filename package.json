@@ -2,7 +2,7 @@
   "name": "ns-track-lib",
   "version": "1.0.0",
   "description": "",
-  "main": "src/MapViewRenderer.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,18 +14,27 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nickolanack/tns-mobile-data-collector.git"
+    "url": "git+https://github.com/nickolanack/ns-track-lib.git"
   },
-  "keywords": [
-  ],
+  "keywords": [],
   "author": "Nick Blackwell",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nickolanack/tns-mobile-data-collector/issues"
+    "url": "https://github.com/nickolanack/ns-track-lib/issues"
   },
-  "homepage": "https://github.com/nickolanack/tns-mobile-data-collector#readme",
+  "homepage": "https://github.com/nickolanack/ns-track-lib#readme",
   "dependencies": {
-  },
-  "devDependencies": {
+    "@nativescript/android": "8.3.0",
+    "@nativescript/core": "~8.3.2",
+    "@nativescript/geolocation": "^8.0.2",
+    "@nativescript/ios": "8.3.2",
+    "@nativescript/types": "~8.2.0",
+    "@nativescript/webpack": "~5.0.0",
+    "@xmldom/xmldom": "0.8.2",
+    "js-simplekml": "https://github.com/nickolanack/js-simplekml",
+    "nativescript-google-maps-sdk": "../google-map-sdk-7/src",
+    "nativescript-picker": "file:../nativescript-picker/src",
+    "tns-mobile-data-collector": "../tns-mobile-data-collector",
+    "typescript": "~4.5.5"
   }
 }

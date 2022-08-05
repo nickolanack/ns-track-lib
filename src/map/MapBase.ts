@@ -1,22 +1,38 @@
 "use strict";
 
-import { Color, isAndroid, ImageSource, Image, Observable} from '@nativescript/core';
+import { Color, isAndroid, ImageSource, Image, Observable, EventData} from '@nativescript/core';
 
 
 import { MapView, Position, Marker, Polyline, Polygon } from 'nativescript-google-maps-sdk';
 
 
-import { extend, _isArray, _isObject, getConfiguration, requestPermissions } from '../utils';
+import { extend, _isArray, _isObject, getConfiguration, requestPermissions } from 'tns-mobile-data-collector/src/utils';
 
 import { MapModes } from './MapModes';
 
 import { Layer } from './Layer';
+import { LayerLoader } from './LayerLoader';
+import { FeatureLoader } from './FeatureLoader';
 
 import { MapActionButtons } from './MapActionButtons';
 
 import { StreetView } from './streetView/StreetView';
 
-import { ViewRenderer } from '../ViewRenderer';
+import { ViewRenderer } from 'tns-mobile-data-collector/src/ViewRenderer';
+
+import * as MapViewRenderer from "ns-track-lib/src/MapViewRenderer";
+
+export interface ShapeEventData extends EventData {
+	shape:any
+}
+
+export interface MarkerEventData extends EventData {
+	marker:any
+}
+
+
+
+
 
 export abstract class MapBase extends Observable {
 
@@ -28,6 +44,7 @@ export abstract class MapBase extends Observable {
 	protected _mapActionButons: any | MapActionButtons;
 
 	protected _layers: Array<any> | null = null;
+	protected _layerLoader:LayerLoader;
 
 	constructor(map, options) {
 		super();
@@ -38,7 +55,7 @@ export abstract class MapBase extends Observable {
 
 		me._renderer = ViewRenderer.SharedInstance();
 
-		map.on("mapReady", function(event) {
+		map.on("mapReady", (event) => {
 
 
 			me._map = map;
@@ -46,36 +63,36 @@ export abstract class MapBase extends Observable {
 			me._mapModes = new MapModes();
 
 
-			me._renderer.addActionHandler("map.setNormal", function() {
+			me._renderer.addActionHandler("map.setNormal", () => {
 				me.setMapType("normal");
 			});
-			me._renderer.addActionHandler("map.setHybrid", function() {
+			me._renderer.addActionHandler("map.setHybrid", () =>{
 				me.setMapType("hybrid");
 			});
-			me._renderer.addActionHandler("map.setSatellite", function() {
+			me._renderer.addActionHandler("map.setSatellite", () => {
 				me.setMapType("satellite");
 			});
-			me._renderer.addActionHandler("map.setTerrain", function() {
+			me._renderer.addActionHandler("map.setTerrain", () => {
 				me.setMapType("terrain");
 			});
-			me._renderer.addActionHandler("map.toggleType", function() {
+			me._renderer.addActionHandler("map.toggleType", () =>{
 				me.toggleMapType();
 			});
 
 
-			me._renderer.addActionHandler("map.showStreetView", function() {
+			me._renderer.addActionHandler("map.showStreetView", () => {
 				me.showStreetView();
 			});
 
 
 
-			me._renderer.addListResolver("map.layers", function() {
+			me._renderer.addListResolver("map.layers", () => {
 
 
 
-				return new Promise(function(resolve) {
+				return new Promise((resolve) => {
 
-					resolve((me._layerObjects).map((l, i) => {
+					resolve((this._layerLoader.getLayers()).map((l, i) => {
 						return {
 							name: l.getName(),
 							description: l.getDescription(),
@@ -86,8 +103,8 @@ export abstract class MapBase extends Observable {
 
 						if (typeof l.name == "string") {
 
-							me._renderer.addActionHandler("map.toggleLayer." + l.index, function() {
-								me._layerObjects[l.index].toggleVisibility();
+							this._renderer.addActionHandler("map.toggleLayer." + l.index, () => {
+								this._layerLoader.getLayers()[l.index].toggleVisibility();
 							});
 
 
@@ -101,9 +118,9 @@ export abstract class MapBase extends Observable {
 			});
 
 
-			me._renderer.addListResolver("map.types", function() {
+			me._renderer.addListResolver("map.types", () => {
 
-				return new Promise(function(resolve) {
+				return new Promise((resolve) => {
 
 					resolve((["normal", "hybrid", "terrain"]).map((l, i) => {
 						return {
@@ -132,7 +149,7 @@ export abstract class MapBase extends Observable {
 
 
 
-		map.on("markerSelect", function(event) {
+		map.on("markerSelect", function(event:MarkerEventData) {
 			me.notify(event);
 		});
 
@@ -145,7 +162,7 @@ export abstract class MapBase extends Observable {
 		map.on("markerInfoWindowTapped", function(event) {
 			me.notify(event);
 		});
-		map.on("shapeSelect", function(event) {
+		map.on("shapeSelect", function(event:ShapeEventData) {
 			me.notify(event);
 		});
 		map.on("markerBeginDragging", function(event) {
@@ -174,7 +191,7 @@ export abstract class MapBase extends Observable {
 
 	public showStreetView() {
 
-		this._renderer.getMapViewRenderer().showStreetView();
+		MapViewRenderer.SharedInstance().showStreetView();
 
 	}
 
@@ -257,222 +274,88 @@ export abstract class MapBase extends Observable {
 
 	}
 
-	protected formatItem(item) {
+
+	public loadLayers(){
+
+		this._layerLoader=new LayerLoader(this._options);
+		this._layerLoader.setMap(this._map).loadLayers(this._layers, (layer, list)=>{
+
+			this._layerObjects.push(layer);
+
+			list.forEach((item) => {
 
 
-		(() => {
+				console.log('MapBase.Add Layer Item: ' + item.typ);
 
-
-			/**
-			 * add layer field formatters
-			 */
-
-			if (item.urlFormatter) {
-
-				let url = item.url;
-
-				if (typeof item.urlFormatter == 'string') {
-					let urlFormater = this._renderer._valueFormatter[item.urlFormatter];
-					if (typeof urlFormater != 'function') {
-						throw 'Expected tile.urlFormatter to be a function';
-					}
-					item.url = urlFormater(url);
-					return;
+				if ((!item.type) || item.type == "marker") {
+					this.addMarker(item).then((marker) => {
+						layer.addItem(marker, item);
+					}).catch(console.error);
+				}
+				if (item.type == "image") {
+					this.addGroundOverlay(item).then((groundOverlay) => {
+						layer.addItem(groundOverlay, item);
+					}).catch(console.error);
+				}
+				if (item.type == "tile") {
+					this.addTileLayer(item).then((tileLayer) => {
+						layer.addItem(tileLayer, item);
+					}).catch(console.error);
 				}
 
-				if (typeof item.urlFormatter == 'function') {
-					item.url = item.urlFormatter(url);
-					return;
+				if (item.type == "tileset") {
+					this.addTilesetLayer(item).then((tileLayer) => {
+						layer.addItem(tileLayer, item);
+					}).catch(console.error);
 				}
 
-				throw 'Unexpected tile.urlFormatter type. should be a function, or renderer defined function string';
 
-			}
-		})();
+				if (item.type == "kml" || item.type == "kml.heatmap") {
 
-		return item;
-	}
+					const KmlFeature = require('./kml/KmlFeature').KmlFeature;
 
-	public _resolveLayer(layer) {
+					KmlFeature.ReadKml(item.kml).then((kmlLayerContent) => {
 
-		return new Promise((resolve, reject) => {
+						if (item.type == "kml") {
+							layer.addItem(new KmlFeature(this, kmlLayerContent), item);
+						}
 
-			if (_isObject(layer) && _isArray(layer.items)) {
-				resolve(layer.items);
-				return;
-			}
+						if (item.type == "kml.heatmap") {
+							layer.addItem(new (require('./heatmap/HeatMapFeature').HeatMapFeature)(this._map, kmlLayerContent), item);
+						}
 
-
-			if (_isObject(layer) && (layer.type == "tile" || layer.type == "tileset" || layer.type == "kml" || layer.type == "traffic" || layer.type == "indoor" || layer.type == "buildings")) {
-
-
-				layer = this.formatItem(layer);
-
-
-				resolve([layer]);
-				return;
-			}
-
-
-			if (typeof layer == 'string' || typeof layer == 'number' || _isObject(layer)) {
-				// var args = [layer];
-				this._renderer.getListViewRenderer()._listResolvers['layer'](layer).then(function(list) {
-					resolve(list);
-				}).catch(reject);
-				return;
-
-			}
-
-
-			throw 'Unexpected layer type: ' + (typeof layer);
-		});
-	}
-
-	public addLayer(item): Promise<Layer> {
-
-		let me = this;
-
-		return new Promise((resolve) => {
-
-			let layer = new Layer(item, me._map);
-			me._layerObjects.push(layer);
-			resolve(layer);
-
-		});
-
-	}
-
-	public loadLayers() {
-
-		let me = this;
-		console.log('MapBase.loadLayers');
-
-		let mapView = me._map;
-
-		if (!me._layers) {
-			let layers = me._options.layers || getConfiguration().get('layers', () => {
-
-				let l = getConfiguration().get('layer', false);
-				if (l !== false) {
-					return [l];
+					}).catch(console.error);
 				}
-				return [];
+
+
+				if (item.type == "json") {
+
+					const JsonFeature = require('./json/JsonFeature').JsonFeature;
+					JsonFeature.ReadJson(item.json).then((jsonLayer) => {
+						layer.addItem(new JsonFeature(this, jsonLayer), item);
+					}).catch(console.error);
+				}
+
+				if (item.type == "traffic") {
+					layer.addItem(new (require("./TrafficFeature"))(this._map), item);
+				}
+
+				if (item.type == "indoor") {
+					layer.addItem(new (require("./floorplan/FloorPlanFeature").FloorPlanFeature)(this._map), item);
+				}
+
+				if (item.type == "buildings") {
+					layer.addItem(new (require("./Buildings3DFeature"))(this._map), item);
+				}
+
 			});
-
-
-
-			if (typeof layers == "string" && layers.indexOf('{') === 0) {
-				layers = me._renderer._parse(layers);
-			}
-
-			me._layers = layers;
-		}
-
-		// console.log('Render Layers: '+JSON.stringify(layers));
-
-		me._layers.forEach((l) => {
-
-			if (typeof l == "string" && l.indexOf('{') === 0) {
-				l = me._renderer._parse(l);
-			}
-
-			me._resolveLayer(l).then((list: Array<any>) => {
-
-				console.log('MapBase.Add Layer');
-				me.addLayer(extend({
-
-				}, l)).then((layer: Layer) => {
-
-					layer.lazyLoad(() => {
-
-						list.forEach((item) => {
-
-
-							item = this.formatItem(item);
-
-							console.log('MapBase.Add Layer Item: ' + item.typ);
-
-							if ((!item.type) || item.type == "marker") {
-								me.addMarker(item).then((marker) => {
-									layer.addItem(marker, item);
-								}).catch(console.error);
-							}
-							if (item.type == "image") {
-								me.addGroundOverlay(item).then((groundOverlay) => {
-									layer.addItem(groundOverlay, item);
-								}).catch(console.error);
-							}
-							if (item.type == "tile") {
-								me.addTileLayer(item).then((tileLayer) => {
-									layer.addItem(tileLayer, item);
-								}).catch(console.error);
-							}
-
-							if (item.type == "tileset") {
-								me.addTilesetLayer(item).then((tileLayer) => {
-									layer.addItem(tileLayer, item);
-								}).catch(console.error);
-							}
-
-
-							if (item.type == "kml" || item.type == "kml.heatmap") {
-
-								const KmlFeature = require('./kml/KmlFeature').KmlFeature;
-
-								KmlFeature.ReadKml(item.kml).then((kmlLayerContent) => {
-
-									if (item.type == "kml") {
-										layer.addItem(new KmlFeature(this._map, kmlLayerContent), item);
-									}
-
-									if (item.type == "kml.heatmap") {
-										layer.addItem(new (require('./heatmap/HeatMapFeature').HeatMapFeature)(this._map, kmlLayerContent), item);
-									}
-
-								}).catch(console.error);
-							}
-
-
-							if (item.type == "json") {
-
-								const JsonFeature = require('./json/JsonFeature').JsonFeature;
-								JsonFeature.ReadJson(item.json).then((jsonLayer) => {
-									layer.addItem(new JsonFeature(this, jsonLayer), item);
-								}).catch(console.error);
-							}
-
-							if (item.type == "traffic") {
-								layer.addItem(new (require("./TrafficFeature"))(me._map), item);
-							}
-
-							if (item.type == "indoor") {
-								layer.addItem(new (require("./floorplan/FloorPlanFeature").FloorPlanFeature)(me._map), item);
-							}
-
-							if (item.type == "buildings") {
-								layer.addItem(new (require("./Buildings3DFeature"))(me._map), item);
-							}
-
-						});
-
-					});
-
-				}).catch((e) => {
-					console.error("failed to resolve items: " + JSON.stringify(items));
-					console.error(e);
-				});
-
-			}).catch((e) => {
-				console.error("failed to resolve layer: " + JSON.stringify(l));
-				console.error(e);
-			});
-
 		});
 
 
 	}
 
-	public removeMarker = function(marker) {
+
+	public removeMarker(marker) {
 		let me = this;
 		me._map.removeMarker(marker);
 		this.notify({
@@ -481,178 +364,69 @@ export abstract class MapBase extends Observable {
 			item: marker,
 			type: "marker"
 		});
-	};
-	public addMarker = function(item) {
-		let me = this;
+	}
 
 
-		if (item instanceof Marker) {
-			me._map.addMarker(item);
-			me.notify({
+	public addMarker(item) {
+
+		return (new FeatureLoader()).loadMarker(item).then((marker:Marker)=>{
+			this._map.addMarker(marker);
+			this.notify({
 				eventName: 'addFeature',
 				object: this,
-				item: item,
-				type: "marker"
-			});
-			return Promise.resolve(item);
-		}
-
-		return (new Promise(function(resolve, reject) {
-
-			let marker = new Marker();
-
-
-			marker.position = Position.positionFromLatLng(item.coordinates[0], item.coordinates[1]);
-			marker.title = item.name;
-			// marker.snippet = item.description;
-
-			if (item.anchor) {
-				marker.anchor = item.anchor;
-			}
-
-
-			if (typeof item.draggable == 'boolean') {
-				marker.draggable = item.draggable;
-			}
-
-			me._map.addMarker(marker);
-			resolve(marker);
-
-
-
-		})).then(function(marker: Marker) {
-
-
-			return new Promise(function(resolve, reject) {
-
-
-				let icon = me._renderer._parse(item.icon);
-				if (_isArray(icon)) {
-					icon = icon[isAndroid ? 1 : 0];
-				}
-				getConfiguration().getImage(icon, icon).then(function(iconPath) {
-
-					// console.log("Render Feature: "+JSON.stringify(item, null, '   '));
-
-
-					marker.userData = extend({
-						icon: iconPath
-					}, item);
-
-					let image = new Image();
-
-					image.imageSource = ImageSource.fromFileOrResourceSync(iconPath);
-					marker.icon = image;
-					resolve(marker);
-
-				}).catch(function(err) {
-					console.error(err);
-					/**
-					 * failed to parse icon
-					 */
-					marker.color = new Color('magenta');
-					resolve(marker);
-
-				});
-
-			});
-
-		}).then(function(marker: Marker) {
-
-			me.notify({
-				eventName: 'addFeature',
-				object: me, // todo change to `this`
-				// map:me,
 				item: marker,
 				type: "marker"
 			});
 
 			return marker;
-
-		});
-
-	};
-
-	public selectMarker = function(item) {
-		let me = this;
-		me._map.notifyMarkerTapped(item);
-	};
-
-	public selectLine = function(item) {
-		let me = this;
-		me._map.notifyShapeTapped(item);
-	};
-
-	public setIcon = function(marker: Marker, image) {
-
-
-
-		if (image instanceof ImageSource) {
-			return new Promise((resolve, reject) => {
-
-				let img = new Image();
-				img.imageSource = image;
-				marker.icon = img;
-				resolve(marker);
-
-			});
-		}
-
-
-
-
-		let me = this;
-		return new Promise(function(resolve) {
-			let icon = me._renderer._parse(image);
-			if (_isArray(icon)) {
-				icon = icon[isAndroid ? 1 : 0];
-			}
-			getConfiguration().getImage(icon, icon).then(function(iconPath) {
-
-				// console.log("Render Feature: "+JSON.stringify(item, null, '   '));
-
-
-
-
-				marker.userData.icon = image;
-
-				let image = Image();
-				image.imageSource = ImageSource.fromFile(iconPath);
-				marker.icon = image;
-				resolve(marker);
-
-			}).catch(console.error);
 		});
 
 
-	};
+	}
+
+	public setIcon(marker: Marker, image) {
+
+		return (new FeatureLoader()).setIcon(marker, image);
+
+	}
+
+	public selectMarker(item) {
+		let me = this;
+		(<any>me._map).notifyMarkerTapped(item);
+	}
+
+	public selectLine(item) {
+		let me = this;
+		(<any>me._map).notifyShapeTapped(item);
+	}
 
 
-	public addGroundOverlay = function(item) {
+	public addGroundOverlay(item) {
 
 		let me = this;
 		return Promise.resolve(new (require('./ground/GroundOverlayFeature').GroundOverlayFeature)(me._map, item));
 
-	};
-	public addTileLayer = function(item) {
+	}
+
+	public addTileLayer(item) {
 
 		let me = this;
 
 		return Promise.resolve(new (require('./tile/TileFeature').TileFeature)(me._map, item));
 
 
-	};
+	}
 
-	public addTilesetLayer = function(item) {
+	public addTilesetLayer(item) {
 
 		let me = this;
 		return Promise.resolve(new (require('./tile/TilesetFeature').TilesetFeature)(me._map, item));
 
 
-	};
+	}
 
 
-	public setPosition = function(marker, point) {
+	public setPosition(marker, point) {
 
 		let me = this;
 		marker.position = Position.positionFromLatLng(point[0], point[1]);
@@ -664,7 +438,7 @@ export abstract class MapBase extends Observable {
 			object: marker,
 			type: "marker"
 		});
-	};
+	}
 
 
 	public addLine(item) {
@@ -871,7 +645,7 @@ export abstract class MapBase extends Observable {
 		}
 
 		requestPermissions()
-			.then(function(granted) {
+			.then((granted) =>{
 				if (granted) {
 					console.log("Enabling My Location..");
 					mapView.myLocationEnabled = true;
@@ -880,7 +654,9 @@ export abstract class MapBase extends Observable {
 					return;
 				}
 				console.log('Location not granted');
-			}).catch(console.error);
+			}).catch((e)=>{
+				console.error(e);
+			});
 
 
 		mapView.settings.indoorLevelPickerEnabled = true;

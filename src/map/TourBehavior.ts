@@ -5,7 +5,7 @@ import { Observable, ItemEventData } from "@nativescript/core";
 
 import {PickerField} from "nativescript-picker";
 
-import { extend, getRenderer } from '../utils';
+import { extend, getRenderer } from 'tns-mobile-data-collector/src/utils';
 
 
 export interface ActionTemplateHandler {
@@ -60,6 +60,10 @@ export abstract class TourBehavior extends Observable {
 	protected abstract endTour();
 	protected abstract getVisibleItemLocationData(tourItem, callback);
 	protected abstract getItemLabel(tourItem, callback);
+
+	public getTourItem(index) {
+		return  this._currentTourData.order[index];
+	}
 
 	public setTourStep(index) {
 

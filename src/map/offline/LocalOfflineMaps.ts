@@ -15,6 +15,8 @@ import { Observable, File, knownFolders, path} from "@nativescript/core";
 
 import {LineStyler} from "../style/LineStyler";
 
+import * as MapViewRenderer from "ns-track-lib/src/MapViewRenderer";
+
 
 interface Workerish {
 	postMessage: (msg: any) => void;
@@ -29,7 +31,7 @@ export class LocalOfflineMapBehavior extends Observable implements Workerish {
 
 		super();
 
-		getRenderer().getMapViewRenderer().on('create', (rendererEvent) => {
+		MapViewRenderer.SharedInstance().on('create', (rendererEvent) => {
 			const offlineMap = new LocalOfflineMap(rendererEvent.map, config);
 			if (this._worker) {
 				offlineMap.setWorker(this);

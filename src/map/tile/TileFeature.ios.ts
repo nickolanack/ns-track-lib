@@ -1,7 +1,7 @@
 import {File} from "@nativescript/core";
 import {TileBounds} from "./TileBounds";
 
-import {getRenderer} from "../../utils";
+import {getRenderer } from 'tns-mobile-data-collector/src/utils';
 
 export class TileFeature {
 

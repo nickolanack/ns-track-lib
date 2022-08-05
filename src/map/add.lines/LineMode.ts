@@ -1,7 +1,8 @@
-import { MapBase as Map } from '../MapBase';
+import { MapBase as Map, ShapeEventData, MarkerEventData} from '../MapBase';
 import { LocalLayerData } from '../LocalLayerData';
 import { MapModes } from '../MapModes';
-import { setCurrentPageData, extend } from '../../utils';
+
+import { setCurrentPageData, extend } from 'tns-mobile-data-collector/src/utils';
 
 import { Observable } from "@nativescript/core";
 
@@ -176,11 +177,11 @@ export class LineMode extends Observable {
 
 
 		};
-		map.on("shapeSelect", (event) => {
+		map.on("shapeSelect", (event:ShapeEventData) => {
 			_updateMenu(event.shape);
 		});
 		me.on("addLineEditor", (event) => {
-			event.object.on("markerSelect", (event) => {
+			event.object.on("markerSelect", (event:MarkerEventData) => {
 				_updateMenu(event.marker);
 			});
 		});

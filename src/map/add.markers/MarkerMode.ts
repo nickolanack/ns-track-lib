@@ -1,7 +1,7 @@
-import { MapBase as Map } from '../MapBase';
+import { MapBase as Map, MarkerEventData} from '../MapBase';
 import { LocalLayerData } from '../LocalLayerData';
 import { MapModes } from '../MapModes';
-import { setCurrentPageData, extend } from '../../utils';
+import { setCurrentPageData, extend } from 'tns-mobile-data-collector/src/utils';
 
 export class MarkerMode {
 
@@ -81,7 +81,7 @@ export class MarkerMode {
 
 		const me = this;
 		const map: Map = me._map;
-		map.on("markerSelect", (event) => {
+		map.on("markerSelect", (event:MarkerEventData) => {
 			const marker = event.marker;
 			const buttons = [];
 

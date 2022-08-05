@@ -1,5 +1,6 @@
-import { getConfiguration } from '../utils';
-import { MapBase as Map } from './MapBase';
+import { getConfiguration } from 'tns-mobile-data-collector/src/utils';
+ 
+import { MapBase as Map, MarkerEventData, ShapeEventData} from './MapBase';
 
 import { Observable } from "@nativescript/core";
 
@@ -33,7 +34,7 @@ export class LocalLayerData extends Observable {
 
 		const me = this;
 		const map: Map = me._map;
-		map.on("markerSelect", (event) => {
+		map.on("markerSelect", (event:MarkerEventData) => {
 			const marker = event.marker;
 
 
@@ -44,7 +45,7 @@ export class LocalLayerData extends Observable {
 
 		});
 
-		map.on("shapeSelect", (event) => {
+		map.on("shapeSelect", (event:ShapeEventData) => {
 			const shape = event.shape;
 
 
@@ -169,7 +170,8 @@ export class LocalLayerData extends Observable {
 						this._markerList.push(marker);
 						this.notify({
 							eventName: "addMarker",
-							object: marker
+							object:this,
+							marker: marker
 						});
 					}).catch(console.error);
 				}
@@ -181,7 +183,8 @@ export class LocalLayerData extends Observable {
 						this._lineList.push(line);
 						this.notify({
 							eventName: "addLine",
-							object: line
+							object:this,
+							line: line
 						});
 					}).catch(console.error);
 				}
@@ -194,7 +197,8 @@ export class LocalLayerData extends Observable {
 						console.log('notify addPolygon');
 						this.notify({
 							eventName: "addPolygon",
-							object: polygon
+							object:this,
+							polygon: polygon
 						});
 					}).catch(console.error);
 				}

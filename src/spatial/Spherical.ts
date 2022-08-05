@@ -116,6 +116,11 @@ export const toCoordinate = (c: LatitudeLongitude|Coordinate|Coord): Coordinate 
 
 };
 
+
+/**
+ * computes distance meters between to coordinates ignoring altitude (haversine)
+ * @type {[type]}
+ */
 export const distance = (c1: Coordinate|Coord, c2: Coordinate|Coord): Meters => {
 
 	c1 = toCoordinate(c1);
@@ -195,3 +200,22 @@ export const toVector = function(direction: Degrees, magnitude: Meters): Vector3
 	};
 
 };
+
+
+export const sigmondRolloff=function(d, opts){
+
+	opts=opts||{};
+
+	let a=0.1;
+	let center=opts.center||1200;
+	let base=2;
+
+
+
+	let width= 4;
+
+	return 1-(1-a)/(1+Math.pow(base,-(width*(d-center)/center)));
+
+}
+
+

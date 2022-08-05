@@ -1,5 +1,5 @@
 
-import { extend } from '../utils';
+import { extend } from 'tns-mobile-data-collector/src/utils';
 import { Observable } from "@nativescript/core";
 import { MapBase as Map } from './MapBase';
 import { Polyline, Polygon, Marker } from 'nativescript-google-maps-sdk';
@@ -20,11 +20,11 @@ export class LineDecorator extends Observable {
 
 		this._config = extend({
 
-			startIcon: "~/markers/circles/plain-flat/ffffff-24.png",
-			endIcon: "~/markers/circles/plain-flat/ffffff-24.png",
-			vertIcon: "~/markers/circles/sm/ffffff-16.png",
+			startIcon: ["~/markers/circles/plain-flat/ffffff-24.png","~/markers/circles/plain-flat/ffffff-48.png"],
+			endIcon: ["~/markers/circles/plain-flat/ffffff-24.png","~/markers/circles/plain-flat/ffffff-48.png"],
+			vertIcon: ["~/markers/circles/sm/ffffff-16.png","~/markers/circles/sm/ffffff-32.png"],
 			selectedVertIcon: false,
-			selectedIcon: "~/markers/circles/plain-flat/1f78b4-32.png",
+			selectedIcon: ["~/markers/circles/plain-flat/1f78b4-32.png","~/markers/circles/plain-flat/1f78b4-48.png"],
 			clickable: true,
 			draggable: true,
 			autoselect: true
@@ -319,7 +319,7 @@ export class LineDecorator extends Observable {
 				map.setPosition(this._currentLinePoints[i], [p.latitude, p.longitude]);
 			});
 
-			resolve();
+			resolve(true);
 
 		});
 

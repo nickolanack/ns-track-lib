@@ -1,5 +1,5 @@
 
-import { getConfiguration, getRenderer, extend } from '../utils';
+import { getConfiguration, getRenderer, extend } from 'tns-mobile-data-collector/src/utils';
 import { Observable } from "@nativescript/core";
 
 import { MarkerMode } from "./add.markers/MarkerMode";
@@ -10,12 +10,14 @@ import { TrackerMode } from "./add.tracks/TrackerMode";
 import { LocalLayerData } from "./LocalLayerData";
 import { MapBase as Map } from "./MapBase";
 
+import * as MapViewRenderer from "ns-track-lib/src/MapViewRenderer";
+
 
 export class LocalMapFeaturesBehavior {
 	constructor(config) {
 
 
-		getRenderer().getMapViewRenderer().on('create', (rendererEvent) => {
+		MapViewRenderer.SharedInstance().on('create', (rendererEvent) => {
 			let localFeatures = new LocalMapFeatures(rendererEvent.map, config);
 			rendererEvent.map.addAction('exportLocalMap', () => {
 				localFeatures.getJsonData().then(list => {

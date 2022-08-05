@@ -1,5 +1,5 @@
 import {MapView} from 'nativescript-google-maps-sdk';
-import { extend } from '../utils';
+import { extend } from 'tns-mobile-data-collector/src/utils';
 export class Layer {
 
 

@@ -1,7 +1,7 @@
 import { MapBase as Map } from '../MapBase';
 import { LocalLayerData } from '../LocalLayerData';
 import { MapModes } from '../MapModes';
-import { setCurrentPageData, extend } from '../../utils';
+import { setCurrentPageData, extend } from 'tns-mobile-data-collector/src/utils';
 
 import { Observable } from "@nativescript/core";
 
@@ -163,7 +163,8 @@ export class TrackerMode extends Observable {
 
 					me.notify({
 						eventName: "complete",
-						object: track
+						object: this,
+						track:track
 					});
 				});
 			}
@@ -191,7 +192,8 @@ export class TrackerMode extends Observable {
 
 		me.notify({
 			eventName: "addLineEditor",
-			object: me._currentLineEdit
+			object: this,
+			lineEdit:me._currentLineEdit
 		});
 	}
 
@@ -204,7 +206,8 @@ export class TrackerMode extends Observable {
 
 		me.notify({
 			eventName: "addLineTracker",
-			object: me._currentLineTracker
+			object: this,
+			lineTracker:me._currentLineTracker
 		});
 	}
 

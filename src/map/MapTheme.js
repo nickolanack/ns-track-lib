@@ -3,11 +3,12 @@ function MapTheme() {
 
 	var me = this;
 
-	me._renderer = require('../ViewRenderer').ViewRenderer.SharedInstance();
+	me._renderer = require('tns-mobile-data-collector').ViewRenderer.SharedInstance();
 	//me._config = require('./Configuration').SharedInstance();
+	//
+	var MapViewRenderer = require('../MapViewRenderer');
 
-	var mapRenderer = me._renderer.getMapViewRenderer();
-
+	var mapRenderer = MapViewRenderer.SharedInstance(); 
 
 	mapRenderer.on('create', function(rendererEvent) {
 

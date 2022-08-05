@@ -2,9 +2,35 @@
 
 
 var MapView=require("nativescript-google-maps-sdk").MapView;
+var isIOS=require("@nativescript/core").isIOS;
+
+//declare var GMSServices: any;
+
+let SharedInstance=null;
+
 
 function MapViewRenderer() {
 
+	if(SharedInstance){
+
+		throw 'Already instantiated. use MapViewRenderer.SharedInstance()'
+	}
+
+	SharedInstance=this;
+
+	 if (isIOS) {
+        /**
+         * Not required for android. ios requires app key from developer console...
+         * A blank map background indicates an invalid key. 
+         */
+        	
+        let api=require('~/apikey.json');
+
+       	console.log('Set Google Map API key from json:'+api.key);
+        GMSServices.provideAPIKey(api.key);
+    }
+
+	
 
 
 	var me = this;
@@ -13,7 +39,7 @@ function MapViewRenderer() {
 	/**
 	 * Render simple items, fields, buttons etc.
 	 */
-	me._renderer = require('./ViewRenderer').ViewRenderer.SharedInstance();
+	me._renderer = require('tns-mobile-data-collector').ViewRenderer.SharedInstance();
 
 	me._renderer.addViewType('map', function(container, field) {
 		return me.renderMap(container, field);
@@ -27,19 +53,33 @@ function MapViewRenderer() {
 
 try {
 
-	var observableModule = require("@nativescript/core").Observable;
-	MapViewRenderer.prototype = new observableModule.Observable();
+	var Observable = require("@nativescript/core").Observable;
+	MapViewRenderer.prototype = new Observable();
 } catch (e) {
 	console.error('Unable to extend Observable!!!');
 }
 
+MapViewRenderer.SharedInstance = function() {
+	if(!SharedInstance){
+		return new MapViewRenderer();
+	}
+	return SharedInstance;
+}
 
 
 MapViewRenderer.prototype._setMapState = function(state) {
 	var me = this;
 	state = JSON.parse(JSON.stringify(state));
+
+	var model=me._renderer.getModel();
+
+	if(!model){
+		console.error('model is gone - transition?');
+		return;
+	}
+
 	Object.keys(state).forEach(function(k) {
-		me._renderer.getModel().set(k, state[k]);
+		model.set(k, state[k]);
 	})
 
 }
@@ -74,13 +114,53 @@ MapViewRenderer.prototype.renderStreetView = function(container, field) {
 
 	this.notify(extend({},{
 		eventName: 'showStreetView',
-		object: me, 
+		object: this, 
 		streetView: streetView
 	}));
+
+
+	streetView.on("markerSelect", (event) => {
+
+		if(event['marker']&&event.marker["userData"]){
+			this._setMapState({
+				"feature": {
+					"type": "marker",
+					"id": event.marker.userData.id || event.marker.userData._id || -1,
+					"title": event.marker.title || event.marker.userData.title || "",
+					"description": event.marker.userData.description || "",
+					"creationDate": event.marker.userData.creationDate || "",
+					"uid": event.marker.userData.uid || "",
+					"icon": event.marker.userData.icon || "default",
+					"userData": event.marker.userData || {},
+					"attributes": event.marker.userData.attributes || {},
+				}
+			});
+
+
+			this._setMapState({
+				"hasActiveFeature": true,
+			});
+
+			console.log("markerSelect: " + Object.keys(event));
+
+			if (field.markerDetail) {
+				this._renderer._showSubform(_isObject(field.markerDetail)?field.markerDetail:{
+					"view": field.markerDetail
+				});
+			}
+
+			this.notify(event);
+		}
+
+	});
+
 
 	return streetView;	
 
 }
+
+
+
 
 
 MapViewRenderer.prototype.renderMap = function(container, field) {
@@ -179,7 +259,8 @@ MapViewRenderer.prototype.renderMap = function(container, field) {
 					"creationDate": event.marker.userData.creationDate || "",
 					"uid": event.marker.userData.uid || "",
 					"icon": event.marker.userData.icon || "default",
-					"userData": event.marker.userData || {}
+					"userData": event.marker.userData || {},
+					"attributes": event.marker.userData.attributes || {},
 				}
 			});
 

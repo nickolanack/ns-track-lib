@@ -10,6 +10,7 @@ interface InitEvent extends EventData {
 interface Downloaders {
 	[key: string]: TileDownloader;
 }
+
 export interface BoundsPoly {
 	_id: string;
 	coordinates: Array<Array<number>>;

@@ -1,17 +1,21 @@
 
 import {KmlFeatureBase} from "./KmlFeatureBase";
+import {JsonFeature} from "../json/JsonFeature";
 export class KmlFeature extends KmlFeatureBase {
 
 	private _map: any;
 	private _kml: string|any;
-	private _parser: any;
-	private _renderer: any;
-	public ios: any = null;
+	private _jsonFeature: any;
+
+	private _jsonData;
+	private _items = null;
 
 	constructor(map, kmlString) {
 		super();
 		this._map = map;
 		this._kml = kmlString;
+
+	
 	}
 
 	private _init() {
@@ -19,9 +23,28 @@ export class KmlFeature extends KmlFeatureBase {
 		return this.resolveKml(this._kml).then((kmlString) => {
 
 			this._kml = null;
-			const parser = GMUKMLParser.alloc().initWithData(NSString.stringWithString(kmlString).dataUsingEncoding(NSUTF8StringEncoding));
-			this._parser = parser;
-			this._parser.parse();
+
+			const KmlReader=require('js-simplekml/KmlReader.js');
+			const DOMParser=require('@xmldom/xmldom').DOMParser;
+
+
+			this._jsonData=[];
+
+			(new KmlReader(new DOMParser().parseFromString(kmlString)))
+			  .parseMarkers((point)=>{    
+			  		point.type="marker";  
+			        this._jsonData.push(point)
+			  }).parseLines((line)=>{
+			        this._jsonData.push(line);       
+			  }).parsePolygons((poly)=>{
+			        this._jsonData.push(poly);        
+			  }).parseNetworklinks((link)=>{
+			                
+			  }).parseGroundOverlays((overlay)=>{
+			                
+			  });
+
+			  this._jsonFeature=new JsonFeature(this._map, this._jsonData);
 
 		});
 
@@ -29,26 +52,24 @@ export class KmlFeature extends KmlFeatureBase {
 
 	public hide() {
 
-		if (!this._renderer) {
+		if (!this._jsonFeature) {
 			return this;
 		}
-		this._renderer.clear();
+		this._jsonFeature.hide();
 
 		return this;
 	}
 	public show() {
 
-		if (!this._parser) {
+		if (!this._jsonFeature) {
 			this._init().then(() => {
 				this.show();
-			});
+			}).catch(console.error);
+			
 			return this;
 		}
 
-		const renderer = GMUGeometryRenderer.alloc().initWithMapGeometriesStyles(this._map.nativeView, this._parser.placemarks, this._parser.styles);
-		renderer.render();
-		this._renderer = renderer;
-		this.ios = renderer;
+		this._jsonFeature.show();
 		return this;
 	}
 

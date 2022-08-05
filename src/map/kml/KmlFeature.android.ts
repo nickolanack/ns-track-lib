@@ -22,7 +22,7 @@ export class KmlFeature extends KmlFeatureBase {
 			this._kml = null;
 
 			const context = Application.android.context;
-			const layer = new com.google.maps.android.data.kml.KmlLayer(this._map.gMap, new java.io.ByteArrayInputStream((new java.lang.String(kmlString)).getBytes()), context);
+			const layer = new com.google.maps.android.data.kml.KmlLayer(this._map.getMapView().gMap, new java.io.ByteArrayInputStream((new java.lang.String(kmlString)).getBytes()), context);
 			this._layer = layer;
 			this.android = layer;
 			return kmlString;

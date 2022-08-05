@@ -1,7 +1,7 @@
 
 import { Observable } from "@nativescript/core";
 
-import { getRenderer } from '../utils';
+import { getRenderer } from 'tns-mobile-data-collector/src/utils';
 
 export class MapActionButtons extends Observable {
 

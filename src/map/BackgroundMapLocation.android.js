@@ -7,8 +7,8 @@ function BackgroundMapLocation() {
 
 
 try {
-	var observableModule = require("@nativescript/core").Observable;
-	BackgroundMapLocation.prototype = new observableModule.Observable();
+	var Observable = require("@nativescript/core").Observable;
+	BackgroundMapLocation.prototype = new Observable();
 } catch (e) {
 	console.error('Unable to extend Observable!!!');
 }
@@ -94,11 +94,18 @@ BackgroundMapLocation.prototype._stopAndroidService = function() {
 			}
 
 
-			var fs = require("file-system");
-			var folder = fs.knownFolders.temp();
-			var path = fs.path.join(folder.path, "_mytrack.json");
-			if (fs.File.exists(path)) {
-				var file = fs.File.fromPath(path);
+			//import { Observable,  File, knownFolders, path, Http  } from "@nativescript/core";
+
+			const knownFolders=require("@nativescript/core").knownFolders
+			const File=require("@nativescript/core").File
+			const path=require("@nativescript/core").path
+
+
+			//var fs = require("@nativescript/file-system");
+			var folder = knownFolders.temp();
+			var p = path.join(folder.path, "_mytrack.json");
+			if (File.exists(p)) {
+				var file = File.fromPath(p);
 				file.readText().then(function(content) {
 					console.log("read stored path");
 					var locations = JSON.parse(content);

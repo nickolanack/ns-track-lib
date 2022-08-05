@@ -1,5 +1,5 @@
 
-import { _isArray } from '../../utils';
+import { _isArray } from 'tns-mobile-data-collector/src/utils';
 
 declare type Latitude = number;
 declare type Longitude = number;

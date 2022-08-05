@@ -1,6 +1,6 @@
 
 
-import {extend} from '../../utils';
+import {extend} from 'tns-mobile-data-collector/src/utils';
 
 
 const LogError = (...args) => {

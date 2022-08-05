@@ -23,6 +23,16 @@ class PanoramaViewDelegateImpl extends NSObject implements GMSPanoramaViewDelega
 		}    	
     }
 
+    public panoramaViewDidTapMarker(panorama:GMSPanoramaView, marker:GMSMarker){
+
+    	let owner = this._owner.get();
+		if (owner) {
+			owner._panoramaViewDidTapMarker(panorama, marker);
+		}  
+
+    }
+
+ 
 
 
 }
@@ -33,7 +43,21 @@ export class StreetView extends StreetViewBase {
 
 	protected _delegate: GMSPanoramaViewDelegate|null;
 
+	protected _lastOrientation:any=null;
 
+
+	public getOrientation(){
+		return this._lastOrientation;
+	}
+
+	public  setPanoId(id: string, callback?): Promise<void>{
+
+		return new Promise((resolve) => {
+			this.nativeView.moveToPanoramaID(id);
+			resolve();
+		});
+
+	}
 
 
 	public setCenter(pos: Array<number>, callback?): Promise<void> {
@@ -70,6 +94,7 @@ export class StreetView extends StreetViewBase {
 
 
 
+
 	createNativeView() {
 
 		const panoView = GMSPanoramaView.panoramaWithFrameNearCoordinateRadius(CGRectMake(0, 0, 600, 200), CLLocationCoordinate2DMake(45.3323676, 14.4551285), 20);
@@ -83,15 +108,55 @@ export class StreetView extends StreetViewBase {
 
 
 	_panoramaViewDidMoveCamera(panorama:GMSPanoramaView, camera: GMSPanoramaCamera){
-		console.log({bearing:camera.orientation.heading, tilt:camera.orientation.pitch, zoom:camera.zoom});
+
+		let orientation={bearing:camera.orientation.heading, tilt:camera.orientation.pitch, zoom:camera.zoom};
+		if(JSON.stringify(this._lastOrientation)!==JSON.stringify(orientation)){
+			/**
+			 * prevent too much logging
+			 */
+			//console.log(orientation);
+			this._lastOrientation=orientation;
+		}
+
 	}
+
+	_panoramaViewDidTapMarker(panorama:GMSPanoramaView, marker: GMSMarker){
+
+		if(this._markers){
+			var list=this._markers.filter((m)=>{
+				return m.ios===marker;
+			});
+
+			if(list.length){
+				this._notifyMarkerTapped(list[0]);
+			}
+		}
+
+	}
+
+
+	protected _showMarker(marker){
+
+		if(!this._markers){
+			this._markers=[];
+		}
+		marker.ios.panoramaView=this.nativeView;
+
+		if(this._markers.indexOf(marker)==-1){
+			this._markers.push(marker);
+		}
+
+
+	}
+
+
 
 
 	initStreetView() {
 
 		this._delegate = PanoramaViewDelegateImpl.initWithOwner(new WeakRef(this));
 		this.nativeView.delegate = this._delegate;
-		this.notifyPanoramaReady();
+		this.initPanorama();
 
 	}
 

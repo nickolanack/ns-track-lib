@@ -1,5 +1,7 @@
 import { getConfiguration } from 'tns-mobile-data-collector/src/utils';
  
+import { LocalData } from 'tns-mobile-data-collector/src/LocalData';
+
 import { MapBase as Map, MarkerEventData, ShapeEventData} from './MapBase';
 
 import { Observable } from "@nativescript/core";
@@ -14,12 +16,24 @@ export class LocalLayerData extends Observable {
 	private _lineList: Array<any> = [];
 	private _polygonList: Array<any> = [];
 
+	private _localData: LocalData;
+
 	constructor(name: string, map: Map, options) {
 
 		super();
 
 		this._dataName = name;
 		this._map = map;
+		this._localData=(new LocalData()).setNamespace(()=>{
+			try{
+				return getConfiguration().getNamespace();
+			}catch(e){}
+
+
+			console.warn('Using `_localApp` as namespace because no domain is set in configuration');
+
+			return '_localApp';
+		});
 		this._addTapActions();
 
 
@@ -91,8 +105,13 @@ export class LocalLayerData extends Observable {
 	private _saveFeatureType(item, type, callback) {
 
 
-		let fn = (err, result) => {
+		let fn = (err, result?) => {
+
+
+
 			if (err) {
+
+				console.error('Error saving feature');
 				console.error(err);
 			}
 
@@ -117,7 +136,7 @@ export class LocalLayerData extends Observable {
 		};
 
 
-		let local = getConfiguration().getLocalData(this._dataName, []).then((list) => {
+		let local = this._localData.getValue(this._dataName, []).then((list:Array<any>) => {
 
 			let isNewItem = true;
 			if (item.userData._id) {
@@ -139,7 +158,7 @@ export class LocalLayerData extends Observable {
 
 
 
-			getConfiguration().setLocalData(this._dataName, list).then(() => {
+			this._localData.setValue(this._dataName, list).then(() => {
 				fn(null, true);
 			}).catch(fn);
 
@@ -152,14 +171,14 @@ export class LocalLayerData extends Observable {
 
 	public getJsonData() {
 
-		return getConfiguration().getLocalData(this._dataName, []);
+		return this._localData.getValue(this._dataName, []);
 
 	}
 
 
 	public load() {
 
-		let local = getConfiguration().getLocalData(this._dataName, []).then((list) => {
+		let local =this._localData.getValue(this._dataName, []).then((list:Array<any>) => {
 			console.log("usersMapFeatures:" + JSON.stringify(list));
 			list.forEach((feature) => {
 				if (((!feature.type) && typeof feature.coordinates[0] == "number") || feature.type == "marker") {
@@ -227,7 +246,7 @@ export class LocalLayerData extends Observable {
 	private _deleteFeature(item, type, callback) {
 
 
-		const fn = (err, result) => {
+		const fn = (err, result?) => {
 
 			if (err) {
 				console.error(err);
@@ -254,7 +273,9 @@ export class LocalLayerData extends Observable {
 		};
 
 
-		let local = getConfiguration().getLocalData(this._dataName, []).then((list) => {
+
+
+		this._localData.getValue(this._dataName, []).then((list:Array<any>) => {
 
 			let isMissingItem = true;
 			if (item.userData._id) {
@@ -274,7 +295,7 @@ export class LocalLayerData extends Observable {
 
 
 
-			return getConfiguration().setLocalData(this._dataName, list).then(() => {
+			return this._localData.getValue(this._dataName, list).then(() => {
 				fn(null, true);
 			}).catch(fn);
 

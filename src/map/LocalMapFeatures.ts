@@ -1,6 +1,6 @@
 
 import { getConfiguration, getRenderer, extend } from 'tns-mobile-data-collector/src/utils';
-import { Observable } from "@nativescript/core";
+import { Observable, EventData } from "@nativescript/core";
 
 import { MarkerMode } from "./add.markers/MarkerMode";
 import { LineMode } from "./add.lines/LineMode";
@@ -13,12 +13,29 @@ import { MapBase as Map } from "./MapBase";
 import * as MapViewRenderer from "ns-track-lib/src/MapViewRenderer";
 
 
-export class LocalMapFeaturesBehavior {
+
+
+export interface MapFeaturesEventData extends EventData {
+	localFeaturesLayer:any,
+	layer:any
+}
+
+
+export class LocalMapFeaturesBehavior extends Observable{
 	constructor(config) {
 
+		super();
 
 		MapViewRenderer.SharedInstance().on('create', (rendererEvent) => {
 			let localFeatures = new LocalMapFeatures(rendererEvent.map, config);
+
+			this.notify({
+				eventName:"addLocalMapFeaturesLayer",
+				object:this,
+				localFeaturesLayer:localFeatures,
+				layer:localFeatures.getLayer()
+			})
+
 			rendererEvent.map.addAction('exportLocalMap', () => {
 				localFeatures.getJsonData().then(list => {
 
@@ -98,7 +115,10 @@ class LocalMapFeatures extends Observable {
 				vertIcon: this.iconPath + "circles/sm/ffffff-16.png",
 				selectedVertIcon: this.iconPath + "circles/sm/1f78b4-16.png",
 				selectedIcon: this.iconPath + "circles/plain-flat/1f78b4-32.png"
-			}
+			},
+			defaultMarker:"point/plain-flat/33a02c-48.png",
+			editForm:false
+
 		}, me._config);
 
 		if (this.iconPath !== '~/markers/') {
@@ -145,10 +165,18 @@ class LocalMapFeatures extends Observable {
 	}
 
 
+	public getLayer(){
+		return this._localLayer;
+	}
+
 
 	public getJsonData() {
 		return this._localLayer.getJsonData();
 	}
+
+
+
+
 
 	public _addMarkerTapActions() {
 
@@ -160,16 +188,36 @@ class LocalMapFeatures extends Observable {
 			const marker = event.marker;
 
 
+			if(this._config.editForm){
 
-			map.getActionButtons().addEditBtn(() => {
+				map.getActionButtons().addEditBtn(() => {
 
 
-				this._localLayer.saveMarker(marker, () => {
+					// this._localLayer.saveMarker(marker, () => {
+
+					// });
+
+					if(this._config.editForm){
+
+						getRenderer()._showSubform(this._config.editForm, (data)=>{
+
+							Object.keys(data).forEach((key)=>{
+								marker.userData[key]=data[key];
+							});
+
+							this._localLayer.saveMarker(marker, () => {
+
+							});
+
+						});
+
+						//me._renderer._showSubform(field);
+					}
+
+
 
 				});
-
-
-			});
+			}
 
 
 			map.getActionButtons().addRemoveBtn(() => {
@@ -232,7 +280,7 @@ class LocalMapFeatures extends Observable {
 	public _addMarkerMode() {
 		new MarkerMode(this._map, this._localLayer, {
 			defaultMarker: {
-				'icon': this.iconPath + "point/plain-flat/1f78b4-48.png"
+				'icon': typeof this._config.defaultMarker=="string"?this.iconPath+this._config.defaultMarker:this.iconPath + "point/plain-flat/33a02c-48.png"
 			}
 		});
 	}
@@ -243,8 +291,6 @@ class LocalMapFeatures extends Observable {
 
 	public _updateCurrentLineIndicators() {
 		let me = this;
-
-
 
 	}
 

@@ -67,6 +67,11 @@ export class LayerLoader{
 
 			if (typeof this._layers == "string" && this._layers.indexOf('{') === 0) {
 				this._layers = this._renderer._parse(this._layers);
+				if(typeof this._layers=='string'){
+					
+					console.log("Invalid layers string: "+this._layers);
+					this._layers=[];
+				}
 			}
 
 		}

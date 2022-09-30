@@ -7,6 +7,7 @@ export class JsonFeature {
 	private _jsonData;
 	private _items = null;
 
+	private _isVisible=false;
 
 	public constructor(map, jsonData) {
 
@@ -34,31 +35,18 @@ export class JsonFeature {
 
 			});
 		}
+
+		this._isVisible=false;
 	}
 
 	public show() {
 
+	
+
 		if (this._jsonData) {
-			this._items = [];
+			
 			this._jsonData.forEach((item) => {
-				if (item.type == "marker") {
-					this._map.addMarker(item).then((marker) => {
-						this._items.push(marker);
-					});
-				}
-
-				if (item.type == "line") {
-					this._map.addLine(item).then((line) => {
-						this._items.push(line);
-					});
-				}
-
-				if (item.type == "polygon") {
-					this._map.addPolygon(item).then((polygon) => {
-						this._items.push(polygon);
-					});
-				}
-
+				this._addObject(item);
 			});
 
 			this._jsonData = null;
@@ -82,6 +70,48 @@ export class JsonFeature {
 			});
 		}
 
+
+		this._isVisible=true;
+
+	}
+
+
+	private _addObject(item){
+
+		if(!this._items){
+			this._items = [];
+		}
+
+		if (item.type == "marker") {
+			this._map.addMarker(item).then((marker) => {
+				this._items.push(marker);
+			});
+		}
+
+		if (item.type == "line") {
+			this._map.addLine(item).then((line) => {
+				this._items.push(line);
+			});
+		}
+
+		if (item.type == "polygon") {
+			this._map.addPolygon(item).then((polygon) => {
+				this._items.push(polygon);
+			});
+		}
+
+	}
+
+	public addObject(obj){
+		if(this._isVisible){
+			this._addObject(obj);
+			return;
+		}
+
+		if(!this._jsonData){
+			this._jsonData=[];
+		}
+		this._jsonData.push(obj);
 
 	}
 

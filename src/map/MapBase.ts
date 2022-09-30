@@ -1,6 +1,6 @@
 "use strict";
 
-import { Color, isAndroid, ImageSource, Image, Observable, EventData} from '@nativescript/core';
+import { Color, isAndroid, isIOS, ImageSource, Image, Observable, EventData} from '@nativescript/core';
 
 
 import { MapView, Position, Marker, Polyline, Polygon } from 'nativescript-google-maps-sdk';
@@ -313,6 +313,16 @@ export abstract class MapBase extends Observable {
 				if (item.type == "kml" || item.type == "kml.heatmap") {
 
 					const KmlFeature = require('./kml/KmlFeature').KmlFeature;
+
+					
+					if(isIOS&&item.type=='kml'){
+
+						KmlFeature.ReadKmlWorker(this, item.kml).then((feature)=>{
+							layer.addItem(feature, item);
+						});
+						return;
+					}
+
 
 					KmlFeature.ReadKml(item.kml).then((kmlLayerContent) => {
 

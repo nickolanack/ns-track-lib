@@ -18,6 +18,12 @@ export class KmlLoader {
 
 		return new Promise((resolve, reject) => {
 
+			if(path.indexOf('<')===0){
+				resolve(path);
+				return;
+			}
+
+
 
 			if (path.indexOf('://') > 0) {
 

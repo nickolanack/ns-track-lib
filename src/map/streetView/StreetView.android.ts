@@ -289,7 +289,7 @@ export class StreetView extends StreetViewBase {
 		view.setClipChildren(false);
 		view.setClipToPadding(false);
 	
-		view.setBackgroundColor(android.graphics.Color.parseColor("#70"+this._H()+this._H()+this._H()));
+		//view.setBackgroundColor(android.graphics.Color.parseColor("#70"+this._H()+this._H()+this._H()));
 		
 		this._markerLayer.addView(view);
 

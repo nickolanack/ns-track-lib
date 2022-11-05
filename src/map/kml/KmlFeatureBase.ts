@@ -1,6 +1,9 @@
-export class KmlFeatureBase {
 
+import{ Observable } from '@nativescript/core';
 
+export class KmlFeatureBase extends Observable{
+
+	protected static _pathResolver:any=null;
 
 	resolveKml(kmlItem: string|any) {
 
@@ -40,15 +43,77 @@ export class KmlFeatureBase {
 		}
 
 
-		return new Promise((resolve, reject) => {
+		KmlFeatureBase._ResolvePath(path).then((path)=>{
+
+			return new Promise((resolve, reject) => {
 
 
-			(new (require('./KmlLoader').KmlLoader)()).fromPathOrUrl(path).then((kmlContent) => {
+				(new (require('./KmlLoader').KmlLoader)()).fromPathOrUrl(path).then((kmlContent) => {
 
-				console.log("got kml string");
-				resolve(kmlContent);
-			}).catch((e) => {
-				console.log("failed to render heatmap");
+					console.log("got kml string");
+					resolve(kmlContent);
+				}).catch((e) => {
+					console.log("failed to render heatmap");
+				});
+
+			});
+
+		})
+
+
+		
+
+	}
+
+	private static  _ResolvePath(path){
+
+
+		if(KmlFeatureBase._pathResolver){
+			return KmlFeatureBase._pathResolver(path);
+		}
+
+		return Promise.resolve(path);
+
+	}
+
+
+	public static SetPathResolver(fn){
+
+		KmlFeatureBase._pathResolver=fn;
+
+	}
+
+
+	public static ReadKmlWorker(map, kmlString){
+
+
+		return KmlFeatureBase._ResolvePath(kmlString).then((kmlString)=>{
+
+			return new Promise((resolve, reject)=>{
+
+
+				const JsonFeature = require('../json/JsonFeature').JsonFeature;
+				let feature=new JsonFeature(map, []);
+
+
+				var worker = new Worker("./KmlJsonWorker.js");
+
+				// send a message to our worker
+				worker.postMessage(kmlString);
+
+				// receive a message from our worker
+				worker.onmessage = function(msg) {
+					feature.addObject(msg.data);
+				}
+
+				worker.onerror = function(e) {
+				    console.log("Worker thread error: " + e);
+				}
+
+
+				resolve(feature);
+
+
 			});
 
 		});
@@ -57,35 +122,6 @@ export class KmlFeatureBase {
 
 
 
-	public static ReadKmlWorker(map, kmlString){
 
-		return new Promise((resolve, reject)=>{
-
-
-			const JsonFeature = require('../json/JsonFeature').JsonFeature;
-			let feature=new JsonFeature(map, []);
-
-
-			var worker = new Worker("./KmlJsonWorker.js");
-
-			// send a message to our worker
-			worker.postMessage(kmlString);
-
-			// receive a message from our worker
-			worker.onmessage = function(msg) {
-				feature.addObject(msg.data);
-			}
-
-			worker.onerror = function(e) {
-			    console.log("Worker thread error: " + e);
-			}
-
-
-			resolve(feature);
-
-
-		})
-
-	}
 
 }

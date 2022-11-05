@@ -111,7 +111,7 @@ class LocalOfflineMap {
 		this._init();
 
 
-		this._localLayer = new LocalLayerData("usersOfflineMapFeatures", map, {});
+		this._localLayer = new LocalLayerData("usersOfflineMapFeatures", {});
 		this._localLayer.on("addPolygon", (event) => {
 
 			this._map.setMapTypeNone();
@@ -130,11 +130,15 @@ class LocalOfflineMap {
 
 
 		});
-		this._localLayer.load();
+		this._localLayer.renderOnMap(map);
 
 
-		this._localLayer.on("shapeSelect", (event) => {
+		map.on("shapeSelect", (event) => {
 			const shape = event.shape;
+
+			if(!this._localLayer.hasShape(shape)){
+				return;
+			}
 
 
 			console.log("Map Zoom: " + this._map.getZoom());
@@ -288,7 +292,11 @@ class LocalOfflineMap {
 
 
 	private storeOffline(poly: Polygon) {
-		this._localLayer.savePolygon(poly, (err) => {
+		
+		this._localLayer.savePolygon(poly).then().catch((e)=>{
+					
+			console.error('LocalOfflineMaps Failed to save marker');
+			console.error(e);
 
 		});
 	}

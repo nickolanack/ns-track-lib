@@ -153,11 +153,7 @@ export class TrackerMode extends Observable {
 			const track = me._currentTrack;
 
 			if (track.getPoints().length > 1) {
-				me._localLayer.saveLine(track, (err) => {
-
-					if (err) {
-						return;
-					}
+				me._localLayer.saveLine(track).then(()=>{
 
 					track.clickable = true;
 
@@ -166,6 +162,12 @@ export class TrackerMode extends Observable {
 						object: this,
 						track:track
 					});
+
+				}).catch((e)=>{
+					
+					console.error('TrackerMode Failed to save marker');
+					console.error(e);
+
 				});
 			}
 

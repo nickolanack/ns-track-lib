@@ -54,27 +54,36 @@ export class LayerLoader{
 			});
 
 
-			if(typeof this._layers == "string" && this._renderer.getListViewRenderer().hasListResolver(this._layers)){
 
-				this._renderer.getListViewRenderer()._listResolvers[this._layers]().then((list) =>{
-					this._layers=list;
-					this.loadLayers(this._layers, callback);
-				}).catch(console.error);
-
-				return;
-
-			}
-
-			if (typeof this._layers == "string" && this._layers.indexOf('{') === 0) {
-				this._layers = this._renderer._parse(this._layers);
-				if(typeof this._layers=='string'){
-					
-					console.log("Invalid layers string: "+this._layers);
-					this._layers=[];
-				}
-			}
 
 		}
+
+
+		if(typeof this._layers == "string" && this._renderer.getListViewRenderer().hasListResolver(this._layers)){
+
+			this._renderer.getListViewRenderer()._listResolvers[this._layers]().then((list) =>{
+				this._layers=list;
+				this.loadLayers(this._layers, callback);
+			}).catch(console.error);
+
+			return;
+
+		}
+
+		if (typeof this._layers == "string" && this._layers.indexOf('{') === 0) {
+			this._layers = this._renderer._parse(this._layers);
+			if(typeof this._layers=='string'){
+				
+				console.error("Invalid layers string: "+this._layers);
+				this._layers=[];
+			}
+		}
+
+		if(typeof this._layers == "string"){
+			console.error("Invalid layers string: "+this._layers);
+			this._layers=[];
+		}
+
 
 		// console.log('Render Layers: '+JSON.stringify(layers));
 

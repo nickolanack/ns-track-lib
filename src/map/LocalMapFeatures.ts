@@ -5,10 +5,12 @@ import { Observable, EventData } from "@nativescript/core";
 import { MarkerMode } from "./add.markers/MarkerMode";
 import { LineMode } from "./add.lines/LineMode";
 import { TrackerMode } from "./add.tracks/TrackerMode";
+import { CameraMarkerMode } from "./add.cameraMarker/CameraMarkerMode";
+
 
 
 import { LocalLayerData } from "./LocalLayerData";
-import { MapBase as Map } from "./MapBase";
+import { MapBase as Map, MarkerEventData, ShapeEventData } from "./MapBase";
 
 import * as MapViewRenderer from "ns-track-lib/src/MapViewRenderer";
 
@@ -22,12 +24,23 @@ export interface MapFeaturesEventData extends EventData {
 
 
 export class LocalMapFeaturesBehavior extends Observable{
+
+	private _config:any;
+
 	constructor(config) {
 
 		super();
 
+
+		this._config = extend({
+			userDataName: 'usersMapFeatures' //default this is automatically prefixed by domain 
+		}, config);
+
+
 		MapViewRenderer.SharedInstance().on('create', (rendererEvent) => {
-			let localFeatures = new LocalMapFeatures(rendererEvent.map, config);
+			
+
+			let localFeatures = new LocalMapFeatures(rendererEvent.map, extend({}, this._config));
 
 			this.notify({
 				eventName:"addLocalMapFeaturesLayer",
@@ -54,7 +67,9 @@ export class LocalMapFeaturesBehavior extends Observable{
 
 
 		getRenderer().setListResolver('usersMapFeatures', () => {
-			return getConfiguration().getLocalData('usersMapFeatures', []);
+		
+			return getConfiguration().getLocalData(this.getDataName(), []);
+		
 		}).setListResolver("users.layer", () => {
 			return Promise.resolve([{
 				name: "Your local content",
@@ -63,6 +78,29 @@ export class LocalMapFeaturesBehavior extends Observable{
 		});
 
 	}
+
+	public getDataName(){
+		let name=this._config.userDataName;
+		if(typeof name=='function'){
+			name=name();
+		}
+		return name;
+	}
+
+
+	public setOptions(config){
+
+		this._config=extend({}, this._config, config);
+		return this;
+
+	}
+
+
+	public getLocalLayerData(){
+		return new LocalLayerData(this.getDataName(), {});
+	}
+
+
 }
 
 
@@ -91,7 +129,8 @@ class LocalMapFeatures extends Observable {
 				width: 2,
 				color: "#6495ED"
 			},
-			iconPath: '~/markers/'
+			iconPath: '~/markers/',
+			dataName: 'usersMapFeatures'
 		}, config);
 
 
@@ -129,7 +168,7 @@ class LocalMapFeatures extends Observable {
 		me._modes = map.getMapModes();
 
 
-		me._localLayer = new LocalLayerData("usersMapFeatures", map, {});
+		me._localLayer = new LocalLayerData(this.getDataName(), {});
 
 		me._map = map;
 
@@ -138,6 +177,8 @@ class LocalMapFeatures extends Observable {
 		me._addMarkerMode();
 		me._addLineMode();
 		me._addTrackingMode();
+
+		me._cameraMarkerMode();
 
 		this._modes.setMode('marker');
 
@@ -155,8 +196,8 @@ class LocalMapFeatures extends Observable {
 		});
 
 
-
-		this._localLayer.load();
+		console.log('Add local layer data');
+		this._localLayer.renderOnMap(map);
 
 
 		this._addMarkerTapActions();
@@ -164,6 +205,13 @@ class LocalMapFeatures extends Observable {
 
 	}
 
+	public getDataName(){
+		let name=this._config.userDataName;
+		if(typeof name=='function'){
+			name=name();
+		}
+		return name;
+	}
 
 	public getLayer(){
 		return this._localLayer;
@@ -175,7 +223,23 @@ class LocalMapFeatures extends Observable {
 	}
 
 
+	private _filterFormInput(data){
 
+		if(this._config.editFormFilterInput){
+			return this._config.editFormFilterInput(data);
+		}
+
+		return data;
+	}
+
+	private _filterFormOutput(data){
+
+		if(this._config.editFormFilterOutput){
+			return this._config.editFormFilterOutput(data);
+		}
+
+		return data;
+	}
 
 
 	public _addMarkerTapActions() {
@@ -184,9 +248,13 @@ class LocalMapFeatures extends Observable {
 
 		const map: Map = me._map;
 		console.log('_addMarkerTapActions');
-		this._localLayer.on("markerSelect", (event) => {
+		map.on("markerSelect", (event:MarkerEventData) => {
 			const marker = event.marker;
 
+
+			if(!this._localLayer.hasMarker(marker)){
+				return;
+			}
 
 			if(this._config.editForm){
 
@@ -199,10 +267,17 @@ class LocalMapFeatures extends Observable {
 
 					if(this._config.editForm){
 
-						getRenderer()._showSubform(this._config.editForm, (data)=>{
 
-							Object.keys(data).forEach((key)=>{
-								marker.userData[key]=data[key];
+
+						getRenderer()._showSubform({
+							"form":this._config.editForm,
+							"data":this._filterFormInput(marker.userData)
+						}, (data)=>{
+
+							let filtered=this._filterFormOutput(data);
+
+							Object.keys(filtered).forEach((key)=>{
+								marker.userData[key]=filtered[key];
 							});
 
 							this._localLayer.saveMarker(marker, () => {
@@ -245,8 +320,13 @@ class LocalMapFeatures extends Observable {
 		let me = this;
 		let map: Map = me._map;
 		console.log('_addLineTapActions');
-		this._localLayer.on("shapeSelect", (event) => {
+		map.on("shapeSelect", (event:ShapeEventData) => {
 			const shape = event.shape;
+
+			if(!this._localLayer.hasLine(shape)||this._localLayer.hasPolygon(shape)){
+				return;
+			}
+
 
 
 			map.getActionButtons().addEditBtn(() => {
@@ -281,7 +361,8 @@ class LocalMapFeatures extends Observable {
 		new MarkerMode(this._map, this._localLayer, {
 			defaultMarker: {
 				'icon': typeof this._config.defaultMarker=="string"?this.iconPath+this._config.defaultMarker:this.iconPath + "point/plain-flat/33a02c-48.png"
-			}
+			},
+			editForm:this._config.editForm||null
 		});
 	}
 
@@ -291,6 +372,18 @@ class LocalMapFeatures extends Observable {
 
 	public _updateCurrentLineIndicators() {
 		let me = this;
+
+	}
+
+	public _cameraMarkerMode(){
+
+
+		const cameraMarker = new CameraMarkerMode(this._map, this._localLayer, {
+			defaultMarker: {
+				'icon': typeof this._config.defaultMarker=="string"?this.iconPath+this._config.defaultMarker:this.iconPath + "point/plain-flat/33a02c-48.png"
+			},
+			editForm:this._config.editForm||null
+		});
 
 	}
 

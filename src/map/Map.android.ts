@@ -71,6 +71,9 @@ export class Map extends MapBase {
 	}
 
 
+
+
+
 	public getZoom(): number {
 		return this._map.gMap.getCameraPosition().zoom;
 	}

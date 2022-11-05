@@ -124,13 +124,23 @@ export class LocationDataRenderer {
 
 		let model = me._renderer.getModel();
 
-		model.set(field.name, [0, 0]);
+		let current=model.get(field.name);
+
+		if(!current){
+			model.set(field.name, [0, 0]);
+			current=[0,0];
+		}
+
+
+		let updateMode=field.updateMode||"follow";
 
 		let validator = null;
 		if (field.validator) {
 			validator = me._renderer.addValidator(field, field.name);
-			validator.validate([0, 0]);
+			validator.validate(current);
 		}
+
+		let locationField=null;
 
 		if (field.field) {
 
@@ -143,15 +153,25 @@ export class LocationDataRenderer {
 			}
 
 			console.log('Render location field');
-			let locationField = me._renderer.renderField(container, label);
+			locationField = me._renderer.renderField(container, label);
 			if (validator) {
 				validator.decorateElement(locationField);
 			}
 
 		}
 
+
+		if(updateMode==="null"&&current){
+
+			//does not watch;
+			return locationField;
+		}
+
 		let location = new Location();
 		location.watchLocation(function(loc) {
+
+			
+
 			console.log("Current location is: " + field.name + ": " + JSON.stringify(loc));
 			let locationData = [loc.latitude, loc.longitude, loc.altitude, {
 				"speed": loc.speed,
@@ -168,12 +188,22 @@ export class LocationDataRenderer {
 				validator.validate(locationData);
 			}
 
+			if(updateMode=="null"||updateMode=="once"){
+				location.clearWatch();
+				location=null;
+			}
+
 
 		});
 
 		me._renderer.onDisposeCurrent(function() {
-			location.clearWatch();
+			if(location){
+				location.clearWatch();
+			}
 		});
+
+
+		return locationField;
 
 	}
 

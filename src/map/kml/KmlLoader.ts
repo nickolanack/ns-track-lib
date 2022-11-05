@@ -38,16 +38,23 @@ export class KmlLoader {
 
 			try {
 
-				let file = knownFolders.currentApp().getFile('assets/' + path);
 
-				if (!File.exists(file.path)) {
-					console.error('read kml not exists: ' + file.path);
+
+				let file = path;
+
+				if(!File.exists(file)){
+					file =  knownFolders.currentApp().getFile('assets/' + path).path
+				}
+
+				if (!File.exists(file)) {
+					console.error('read kml not exists: ' + file);
 					return;
 				}
 
-				console.log('read kml: ' + file.path);
+				console.log('reading kml: ' + file);
 
-				let content = file.readTextSync((e) => {
+
+				let content = File.fromPath(file).readTextSync((e) => {
 					console.error('read error: ' + e);
 				});
 				// .then((content)=>{

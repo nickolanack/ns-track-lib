@@ -145,8 +145,11 @@ export class LineMode extends Observable {
 					map.getActionButtons().addSaveBtn(() => {
 
 
-						this._localLayer.saveLine(shape, () => {
+						this._localLayer.saveLine(shape).then(()=>{
 							this._modes.resetMode('line');
+						}).catch((e)=>{
+							console.error('LineMode Failed to save line');
+							console.error(e);
 						});
 
 					});

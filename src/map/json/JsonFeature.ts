@@ -76,6 +76,78 @@ export class JsonFeature {
 	}
 
 
+	public hasBounds(){
+		return true;
+	}
+
+	public getBounds(){
+
+		return new Promise((resolve)=>{
+			
+			let north = -Infinity, south = Infinity, east = -Infinity, west = Infinity;
+
+			const merge=(c)=>{
+
+
+				north = Math.max(c.latitude, north);
+				south = Math.min(c.latitude, south);
+
+				east = Math.max(c.longitude, east);
+				west = Math.min(c.longitude, west);
+
+
+
+			}
+
+			this._items.forEach((feature)=>{
+
+				if (feature.shape == "polyline") {
+
+					feature.getPoints().forEach((p)=>{
+
+						merge(p);
+
+					})
+
+					return;
+				}
+				if (feature.shape == "polygon") {
+
+					feature.getPoints().forEach((p)=>{
+
+						merge(p);
+
+					});
+
+					return;
+				}
+				if (feature.shape == "marker") {
+
+					merge(feature.getPosition());
+
+					return;
+				}
+
+			});
+
+
+			resolve({
+				north:north,
+				south:south,
+				east:east,
+				west:west
+			});
+
+		})
+
+		
+
+
+	}
+
+
+
+
 	private _addObject(item){
 
 		if(!this._items){

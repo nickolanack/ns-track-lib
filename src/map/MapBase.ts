@@ -3,7 +3,7 @@
 import { Color, isAndroid, isIOS, ImageSource, Image, Observable, EventData} from '@nativescript/core';
 
 
-import { MapView, Position, Marker, Polyline, Polygon } from 'nativescript-google-maps-sdk';
+import { MapView, Position, Marker, Polyline, Polygon, Bounds } from 'nativescript-google-maps-sdk';
 
 
 import { extend, _isArray, _isObject, getConfiguration, requestPermissions } from 'tns-mobile-data-collector/src/utils';
@@ -28,6 +28,10 @@ export interface ShapeEventData extends EventData {
 
 export interface MarkerEventData extends EventData {
 	marker:any
+}
+
+export interface LayerEventData extends EventData {
+	layer:Layer
 }
 
 
@@ -220,10 +224,28 @@ export abstract class MapBase extends Observable {
 	public abstract getZoom(): number;
 	public abstract setZoom(zoom: number, callback?): Promise<void>;
 
+	public fitBounds(bounds:any, pad?){
+
+		return new Promise((resolve, reject)=>{
+
+			let southwest=Position.positionFromLatLng(bounds.south, bounds.west);
+			let northeast=Position.positionFromLatLng(bounds.north, bounds.east);
+
+			this._map.setViewport(Bounds.fromCoordinates(southwest, northeast), pad||0);
+
+		});
+
+
+	}
+
 
 	public toggleMapType = function() {
 
 		let types = ["normal", /* "satellite",*/ "hybrid", "terrain"];
+
+		if(typeof this._type=='undefined'){
+			this._type=types[0];
+		}
 
 		this.setMapType(types[(types.indexOf(this._type) + 1) % types.length]);
 
@@ -282,10 +304,17 @@ export abstract class MapBase extends Observable {
 
 			this._layerObjects.push(layer);
 
-			list.forEach((item) => {
+			list.forEach((item, i) => {
 
 
 				console.log('MapBase.Add Layer Item: ' + item.typ);
+
+				this.notify({
+					eventName:"addLayer",
+					layer:layer,
+					object:this
+				});
+
 
 				if ((!item.type) || item.type == "marker") {
 					this.addMarker(item).then((marker) => {
@@ -314,17 +343,31 @@ export abstract class MapBase extends Observable {
 
 					const KmlFeature = require('./kml/KmlFeature').KmlFeature;
 
+
+					this.notify({
+						eventName:'initKmlReader',
+						layer:layer,
+						kmlReader:KmlFeature,
+						object:this,
+						item:item,
+						itemIndex:i
+					});
+
 					
 					if(isIOS&&item.type=='kml'){
 
-						KmlFeature.ReadKmlWorker(this, item.kml).then((feature)=>{
+						/**
+						 * TODO: ?? should make this the default for all kml. not just ios?
+						 */
+
+						KmlFeature.ReadKmlWorker(this, item.kml||item.url).then((feature)=>{
 							layer.addItem(feature, item);
 						});
 						return;
 					}
 
 
-					KmlFeature.ReadKml(item.kml).then((kmlLayerContent) => {
+					KmlFeature.ReadKml(item.kml||item.url).then((kmlLayerContent) => {
 
 						if (item.type == "kml") {
 							layer.addItem(new KmlFeature(this, kmlLayerContent), item);
@@ -334,7 +377,11 @@ export abstract class MapBase extends Observable {
 							layer.addItem(new (require('./heatmap/HeatMapFeature').HeatMapFeature)(this._map, kmlLayerContent), item);
 						}
 
+					
+
 					}).catch(console.error);
+
+					return;
 				}
 
 
@@ -660,6 +707,8 @@ export abstract class MapBase extends Observable {
 					console.log("Enabling My Location..");
 					mapView.myLocationEnabled = true;
 					mapView.settings.myLocationButtonEnabled = true;
+
+					//zoom to location?
 
 					return;
 				}

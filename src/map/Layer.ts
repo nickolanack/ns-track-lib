@@ -1,16 +1,22 @@
 import {MapView} from 'nativescript-google-maps-sdk';
 import { extend } from 'tns-mobile-data-collector/src/utils';
-export class Layer {
+
+import{ Observable } from '@nativescript/core';
+
+export class Layer extends Observable{
 
 
 	protected _map: MapView;
 	protected config: any;
 	protected _items: Array<any> = [];
 
+	private _throttleShowTimeout:any=null;
+
 	private _lazyLoad: any;
 
 	constructor(options, map) {
 
+		super();
 
 		let me = this;
 		me._map = map;
@@ -26,6 +32,10 @@ export class Layer {
 			// me.show();
 		}
 
+	}
+
+	public getOptions(){
+		return this.config;
 	}
 
 	public getName (item) {
@@ -51,10 +61,27 @@ export class Layer {
 		me._items.push(item);
 		if (me.isVisible()) {
 			me.showItem(item);
+			this._throttleShow();
 		} else {
 			me.hideItem(item);
 		}
 		return me;
+	}
+
+
+	private _throttleShow(){
+
+		if(this._throttleShowTimeout){
+			clearTimeout(this._throttleShowTimeout);
+		}
+		this._throttleShowTimeout=setTimeout(()=>{
+			this._throttleShowTimeout=null;
+			this.notify({
+				eventName:"show",
+				object:this
+			});
+		}, 1000);
+
 	}
 
 
@@ -107,6 +134,11 @@ export class Layer {
 		return this;
 	}
 
+
+	public getItems(){
+		return this._items.slice(0);
+	}
+
 	public toggleVisibility () {
 
 		let me = this;
@@ -131,6 +163,11 @@ export class Layer {
 		});
 
 		me.config.visible = !me.config.visible;
+
+		this.notify({
+			eventName:me.config.visible?"show":"hide",
+			object:this
+		})
 
 		return me;
 

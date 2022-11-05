@@ -1,7 +1,7 @@
 import { MapBase as Map, MarkerEventData} from '../MapBase';
 import { LocalLayerData } from '../LocalLayerData';
 import { MapModes } from '../MapModes';
-import { setCurrentPageData, extend } from 'tns-mobile-data-collector/src/utils';
+import { setCurrentPageData, extend, getRenderer} from 'tns-mobile-data-collector/src/utils';
 
 export class MarkerMode {
 
@@ -21,7 +21,8 @@ export class MarkerMode {
 		this._modes = map.getMapModes();
 		this._localLayer = layer;
 		this._config = extend({
-			defaultMarker: {}
+			defaultMarker: {},
+			editForm:null
 		}, options || {});
 
 
@@ -51,6 +52,8 @@ export class MarkerMode {
 				}, this._config.defaultMarker)).then((marker) => {
 					me._currentMarker = marker;
 					map.selectMarker(me._currentMarker);
+
+
 				}).catch(console.error);
 
 
@@ -59,6 +62,24 @@ export class MarkerMode {
 			}
 			map.selectMarker(me._currentMarker);
 			map.setPosition(me._currentMarker, [event.position.latitude, event.position.longitude]);
+
+			if(this._config.editForm){
+
+				getRenderer()._showSubform({
+					"form":this._config.editForm,
+					"data":me._currentMarker.userData
+				}, (data)=>{
+
+					Object.keys(data).forEach((key)=>{
+						me._currentMarker.userData[key]=data[key];
+					});
+
+					this._localLayer.saveMarker(me._currentMarker).catch((e)=>{
+						console.error('MarkerMode Failed to save marker');
+						console.error(e);
+					})
+				});
+			}
 
 		};
 
@@ -90,8 +111,11 @@ export class MarkerMode {
 
 				map.getActionButtons().addSaveBtn(() => {
 
-					this._localLayer.saveMarker(marker, () => {
+					this._localLayer.saveMarker(marker).then(()=>{
 						delete me._currentMarker;
+					}).catch((e)=>{
+						console.error('MarkerMode Failed to save marker');
+						console.error(e);
 					});
 
 

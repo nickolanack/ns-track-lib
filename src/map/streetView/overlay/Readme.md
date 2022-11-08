@@ -3,7 +3,8 @@
 Google Maps SDK for ios supports adding markers to a streetview:
 
 ```js
-	~ bmarker.ios.panoramaView = GMSPanoramaView
+	//something like this pseudo-code
+	~ marker.ios.panoramaView = pano; //GMSPanoramaView
 ```
 
 For android a similar behavior can be added

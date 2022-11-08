@@ -1,2 +1,2 @@
 # ns-track-lib
-A Collection of Mapping tools used with NativeScript and Google Maps SDK for ios and android 
+Just a collection of mapping tools for NativeScript using Google Maps SDK for ios and android 

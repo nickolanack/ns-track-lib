@@ -7,6 +7,8 @@ Google Maps SDK for ios supports adding markers to a streetview:
 	~ marker.ios.panoramaView = pano; //GMSPanoramaView
 ```
 
+Unfortunately on ios the clipping distance is very low... 
+
 For android a similar behavior can be added
 
 ```js

@@ -260,36 +260,7 @@ class LocalMapFeatures extends Observable {
 
 				map.getActionButtons().addEditBtn(() => {
 
-
-					// this._localLayer.saveMarker(marker, () => {
-
-					// });
-
-					if(this._config.editForm){
-
-
-
-						getRenderer()._showSubform({
-							"form":this._config.editForm,
-							"data":this._filterFormInput(marker.userData)
-						}, (data)=>{
-
-							let filtered=this._filterFormOutput(data);
-
-							Object.keys(filtered).forEach((key)=>{
-								marker.userData[key]=filtered[key];
-							});
-
-							this._localLayer.saveMarker(marker, () => {
-
-							});
-
-						});
-
-						//me._renderer._showSubform(field);
-					}
-
-
+					this._editMarker(marker);
 
 				});
 			}
@@ -311,6 +282,62 @@ class LocalMapFeatures extends Observable {
 
 
 		});
+
+
+	}
+
+
+	private _editMarker(marker){
+
+		if(this._config.editForm){
+
+			(new Promise((resolve)=>{
+
+
+				if(marker.userData._id){
+					resolve(marker);
+				}
+
+			 	this._localLayer.saveMarker(marker).then(()=>{
+					 resolve(marker);
+				});
+
+
+			})).then((marker)=>{
+
+
+			
+
+				getRenderer()._showSubform({
+					"form":this._config.editForm,
+					"data":this._filterFormInput(marker.userData)
+				}, (data)=>{
+
+					let filtered=this._filterFormOutput(data);
+
+					Object.keys(filtered).forEach((key)=>{
+
+						if(key=='icon'&&filtered.icon!=marker.userData.icon){
+							this._map.setIcon(marker, filtered.icon);
+						}
+
+						marker.userData[key]=filtered[key];
+
+
+
+					});
+
+					this._localLayer.saveMarker(marker, () => {
+
+					});
+
+				});
+
+			})
+
+			return;
+		}
+
 
 
 	}
@@ -362,7 +389,9 @@ class LocalMapFeatures extends Observable {
 			defaultMarker: {
 				'icon': typeof this._config.defaultMarker=="string"?this.iconPath+this._config.defaultMarker:this.iconPath + "point/plain-flat/33a02c-48.png"
 			},
-			editForm:this._config.editForm||null
+			editForm:(marker)=>{
+				this._editMarker(marker);
+			}
 		});
 	}
 
@@ -382,7 +411,9 @@ class LocalMapFeatures extends Observable {
 			defaultMarker: {
 				'icon': typeof this._config.defaultMarker=="string"?this.iconPath+this._config.defaultMarker:this.iconPath + "point/plain-flat/33a02c-48.png"
 			},
-			editForm:this._config.editForm||null
+			editForm:(marker)=>{
+				this._editMarker(marker);
+			}
 		});
 
 	}

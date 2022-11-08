@@ -81,8 +81,7 @@ export class LineMode extends Observable {
 				'clickable': true,
 				'coordinates': [
 					[event.position.latitude, event.position.longitude]
-				],
-				"_id": (new Date()).getTime() + ".0"
+				]
 			})).then((line) => {
 				me._currentLine = line;
 				me._addLineEditor();

@@ -80,7 +80,6 @@ export class CameraMarkerMode {
 			return this._map.addMarker(extend({
 				'title': "Test",
 				'coordinates': [loc.latitude, loc.longitude/*, loc.altitude*/],
-				"_id": (new Date()).getTime() + ".0",
 				'media':[assetData]
 
 			}, this._config.defaultMarker)).then((marker) => {
@@ -93,22 +92,16 @@ export class CameraMarkerMode {
 
 				 if(this._config.editForm){
 
-					getRenderer()._showSubform({
-						"form":this._config.editForm,
-						"data":marker.userData
-					}, (data)=>{
 
-						Object.keys(data).forEach((key)=>{
-							marker.userData[key]=data[key];
-						});
+				 	if(typeof this._config.editForm=='function'){
+				 		delete this._currentMarker;
+				 		this._config.editForm(marker);
+				 		return;
+				 	}
 
-						this._localLayer.saveMarker(marker).catch((e)=>{
-							console.error('CameraMarkerMode Failed to save marker');
-							console.error(e);
-						});
-
-					});
+					return;
 				}
+
 
 			});
 
@@ -129,19 +122,20 @@ export class CameraMarkerMode {
 
 	public _addMarkerTapActions() {
 
-		const me = this;
-		const map: Map = me._map;
+
+		const map: Map = this._map;
+
 		map.on("markerSelect", (event:MarkerEventData) => {
 			const marker = event.marker;
 			const buttons = [];
 
-			if (marker === me._currentMarker) {
+			if (marker === this._currentMarker) {
 
 
 				map.getActionButtons().addSaveBtn(() => {
 
 					this._localLayer.saveMarker(marker).then(()=>{
-						delete me._currentMarker;
+						delete this._currentMarker;
 					}).catch((e)=>{
 						console.error('CameraMarkerMode Failed to save marker');
 						console.error(e);
@@ -154,7 +148,7 @@ export class CameraMarkerMode {
 
 
 					map.removeMarker(marker);
-					delete me._currentMarker;
+					delete this._currentMarker;
 
 				});
 

@@ -189,8 +189,7 @@ export class LocalLayerData extends Observable {
 				}
 			});
 
-			featureData.type=type; //force type
-
+	
 		});
 
 	}
@@ -220,7 +219,14 @@ export class LocalLayerData extends Observable {
 
 
 
+		if(typeof type!=='string'){
+			throw 'Invalid type, expected string: '+(typeof type);
+		}
 
+		let types=['marker', 'line', 'polygon'];
+		if((types).indexOf(type)==-1){
+			throw 'Invalid type, expected one of `'+types.join('`, `')+'`: '+type;
+		}
 
 
 		let featureData;
@@ -249,6 +255,7 @@ export class LocalLayerData extends Observable {
 			featureData._store = [this._localData.getNamespace(), this._dataName];
 			featureData.type = type;
 
+			itemData._id=_id;
 
 			return this._storeAndNotifySave(featureList, item, featureData);
 
@@ -276,13 +283,15 @@ export class LocalLayerData extends Observable {
 				throw 'invalid item'
 			}
 
-			if (!itemData._id) {
-				throw 'does not contain a valid _id:';
+			let features=[];
+
+			if (itemData._id) {
+				features=list.filter((f)=>{
+					return f._id == itemData._id;
+				});
 			}
 
-			let features=list.filter((f)=>{
-				return f._id == itemData._id;
-			});
+			
 
 
 

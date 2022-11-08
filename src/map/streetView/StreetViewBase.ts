@@ -13,6 +13,8 @@ export abstract class StreetViewBase extends ContentView {
 	protected altitude:number=0;
 	protected _layers:any;
 
+	protected _headingAdjust:number=0;
+
 	public constructor(field?: any) {
 		super();
 
@@ -50,6 +52,13 @@ export abstract class StreetViewBase extends ContentView {
 
 			if (typeof this.field.id == 'string' && this.field.id[0] == '{') {
 				this.field.id = this._renderer._parse(this.field.id);
+			}
+		}
+
+
+		if(this.field.headingAdjust){
+			if (typeof this.field.headingAdjust == 'string' && this.field.headingAdjust[0] == '{') {
+				this._headingAdjust = this._renderer._parse(this.field.headingAdjust);
 			}
 		}
 
@@ -149,7 +158,7 @@ export abstract class StreetViewBase extends ContentView {
 			list.forEach((item) => {
 
 
-				console.log('StreetViewBase.Add Layer Item: ' + item.typ);
+				console.log('StreetViewBase.Add Layer Item: ' + item.type);
 
 				if ((!item.type) || item.type == "marker") {
 					this.addMarker(item).then((marker) => {

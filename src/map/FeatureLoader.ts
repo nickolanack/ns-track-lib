@@ -1,6 +1,7 @@
 
 import { Marker, Position } from 'nativescript-google-maps-sdk';
 import { ViewRenderer } from 'tns-mobile-data-collector/src/ViewRenderer';
+import { ImageResize } from 'tns-mobile-data-collector/src/image/ImageResize';
 import { extend, _isArray, _isObject, getConfiguration, requestPermissions } from 'tns-mobile-data-collector/src/utils';
 import { Color, isAndroid, ImageSource, Image} from '@nativescript/core';
 
@@ -75,15 +76,43 @@ export class FeatureLoader{
 
 					let image = new Image();
 
-					image.imageSource = ImageSource.fromFileOrResourceSync(iconPath);
-					marker.icon = image;
-					resolve(marker);
+					let imageSource = ImageSource.fromFileOrResourceSync(iconPath);
+
+
+					(new ImageResize()).limit(imageSource, {
+						width:48,
+						height:null
+					}).then((scaled:ImageSource)=>{
+
+						image.imageSource = scaled
+						marker.icon = image;
+						resolve(marker);
+
+					}).catch((e)=>{
+
+						console.error('FeatureLoader: failed to scale');
+						console.error(e);
+
+						image.imageSource = imageSource
+						marker.icon = image;
+						resolve(marker);
+
+					});
+
 
 				}).catch(function(err) {
 					console.error(err);
 					/**
 					 * failed to parse icon
+					 *
+					 *
+					 * 
 					 */
+
+
+					marker.userData = extend({
+					}, item);
+
 					marker.color = new Color('magenta');
 					resolve(marker);
 
@@ -133,10 +162,37 @@ export class FeatureLoader{
 
 
 				let image = new Image();
-				marker.userData.icon = image;
-				image.imageSource = ImageSource.fromFileOrResourceSync(iconPath);
-				marker.icon = image;
-				resolve(marker);
+				marker.userData.icon = iconPath;
+
+				let imageSource=ImageSource.fromFileOrResourceSync(iconPath);
+
+					
+				
+				(new ImageResize()).limit(imageSource, {
+					width:48,
+					height:null
+				}).then((scaled:ImageSource)=>{
+
+					image.imageSource = scaled
+					marker.icon = image;
+					resolve(marker);
+
+				}).catch((e)=>{
+
+					console.error('FeatureLoader: failed to scale');
+					console.error(e);
+
+					image.imageSource = imageSource
+					marker.icon = image;
+					resolve(marker);
+
+				});
+					
+				
+
+				
+
+				
 
 			}).catch(console.error);
 		});

@@ -47,7 +47,7 @@ export class MarkerMode {
 					'title': "Test",
 
 					'coordinates': [event.position.latitude, event.position.longitude],
-					"_id": (new Date()).getTime() + ".0"
+					
 
 				}, this._config.defaultMarker)).then((marker) => {
 					me._currentMarker = marker;
@@ -63,23 +63,7 @@ export class MarkerMode {
 			map.selectMarker(me._currentMarker);
 			map.setPosition(me._currentMarker, [event.position.latitude, event.position.longitude]);
 
-			if(this._config.editForm){
-
-				getRenderer()._showSubform({
-					"form":this._config.editForm,
-					"data":me._currentMarker.userData
-				}, (data)=>{
-
-					Object.keys(data).forEach((key)=>{
-						me._currentMarker.userData[key]=data[key];
-					});
-
-					this._localLayer.saveMarker(me._currentMarker).catch((e)=>{
-						console.error('MarkerMode Failed to save marker');
-						console.error(e);
-					})
-				});
-			}
+			
 
 		};
 
@@ -110,6 +94,17 @@ export class MarkerMode {
 
 
 				map.getActionButtons().addSaveBtn(() => {
+
+
+					if(this._config.editForm){
+
+						if(typeof this._config.editForm == 'function'){
+							this._config.editForm(me._currentMarker);
+							return;
+						}
+						
+					}
+
 
 					this._localLayer.saveMarker(marker).then(()=>{
 						delete me._currentMarker;

@@ -2,12 +2,15 @@ import { StreetViewBase } from "./StreetViewBase";
 import {Application, AndroidApplication, Screen} from "@nativescript/core"
 import { distance, sigmondRolloff } from "../../spatial/Spherical"
 
+import { extend } from 'tns-mobile-data-collector/src/utils';
+
+import { StreetViewMarkers } from "./overlay/StreetViewMarkers"
 
 export class StreetView extends StreetViewBase {
 
 	protected panorama: com.google.android.gms.maps.StreetViewPanoramaView|null;
-	protected _closestMarker:any=null;
-	protected _closestD:number=Infinity;
+	
+	protected _streetViewMarkers:StreetViewMarkers=null;
 
 
 	public  setPanoId(id: string, callback?): Promise<void>{
@@ -70,7 +73,7 @@ export class StreetView extends StreetViewBase {
 			let duration=1000;
 			this.panorama.animateTo(
 				com.google.android.gms.maps.model.StreetViewPanoramaCamera.Builder(this.panorama.getPanoramaCamera())
-					.bearing(heading)
+					.bearing(heading-this._headingAdjust)
 					.build(),
 				duration);
 
@@ -86,128 +89,17 @@ export class StreetView extends StreetViewBase {
 		//console.error('Not implemented!: StreetView.android.showMarker');
 
 
-
-		let origin=this.getPosition();
-		if(!origin){
-
-			if(!this._queueMarker){
-				this._queueMarker=[];
-				this.oncePosition().then(()=>{
-					this._queueMarker.forEach(this._showMarker.bind(this));
-					delete this._queueMarker;
-				});
-			}
-
-			this._queueMarker.push(marker);
-			return;
-
+		if(!this._streetViewMarkers){
+			this._streetViewMarkers=new StreetViewMarkers(this);
 		}
 
-		if(!this._markers){
-			this._markers=[];
-			this._views=[];
-		}
+		this._streetViewMarkers.add(marker);
+
+		
+	}
+
+
 	
-		let image=new android.widget.ImageView(this._context);
-		image.setImageBitmap(marker.icon.imageSource.android);
-
-		this._alignMarker(marker, image, origin);
-
-
-		image.getLayoutParams().height = marker.icon.imageSource.android.getHeight();
-		image.getLayoutParams().width  = marker.icon.imageSource.android.getWidth();
-
-
-		image.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
-		image.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
-
-		//image.getLayoutParams().leftMargin  = 100+(Math.random()*(Screen.mainScreen.widthPixels-100));
-		image.getLayoutParams().topMargin = 100;//Screen.mainScreen.heightPixels/2;
-		
-
-		let ref = new WeakRef(this);
-		let refMarker=new WeakRef(marker);
-
-		image.setOnTouchListener(new android.view.View.OnTouchListener({
-	        onTouch: function (view, event) {
-
-	        	
-	        	if (event.getActionMasked()==android.view.MotionEvent.ACTION_UP) {
-            
-		           	ref.get()._notifyMarkerTapped(refMarker.get());
-		        	
-		        }
-		        return true;
-	        },
-	    }));
-
-
-		if(this._markers.indexOf(marker)==-1){
-			this._markers.push(marker);
-			this._views.push(image);
-		}
-
-	}
-
-
-	private _alignMarker(marker, image, origin){
-
-		let p=marker.position;
-		let x=p.longitude-origin.longitude;
-		let y=p.latitude-origin.latitude;
-		//let angle=Math.atan2(x, y)*(180/Math.PI)*(this._markers0to180.getWidth()/180);
-		let angle=Math.atan2(x, y)*(this._markers0to180.getWidth()/Math.PI);
-		
-		let bearing=angle+180;
-		
-		
-		if(!image.getParent()){
-			if(angle<0){
-				angle=180-angle;
-				this._markers180to360.addView(image);
-			}else{
-				this._markers0to180.addView(image);
-			}
-		}
-
-
-
-
-
-		image.setTranslationX(angle);
-
-
-		let d =distance(p, origin);
-		let altitude=marker.userData.coordinates.length==3?marker.userData.coordinates[2]:0;
-		let originAltitude=this.getAltitude();
-
-		// if(d<this._closestD){
-		// 	this._closestD=d;
-		// 	this._closestMarker=marker;
-		// }
-
-		let scale=sigmondRolloff(d);
-		image.setScaleX(scale);
-		image.setScaleY(scale);
-
-		image.setZ(scale); //draw order;
-
-
-
-
-
-		let elevationAngle=Math.atan2((altitude-originAltitude),d)*(this._markers0to180.getHeight()/Math.PI);
-		image.setTranslationY(elevationAngle);	
-
-		marker.userData=marker.userData||{};
-		marker.userData.orientation={
-			bearing:bearing,
-			tilt:elevationAngle,
-			distance:d
-		};
-
-
-	}
 
 
 	public setIcon(marker: Marker, image) {
@@ -215,15 +107,9 @@ export class StreetView extends StreetViewBase {
 
 		return super.setIcon(marker, image).then((marker)=>{
 
-			if(!(this._markers&&this._markers.indexOf(marker)>=0)){
-				return marker;
+			if(this._streetViewMarkers){
+				this._streetViewMarkers.updateMarkerIcon(marker);
 			}
-
-			let i =this._markers.indexOf(marker);
-			if(this._views[i]){
-				this._views[i].setImageBitmap(marker.icon.imageSource.android);
-			}
-
 			return marker;
 		}).catch((e)=>{
 			console.error(e);
@@ -236,7 +122,11 @@ export class StreetView extends StreetViewBase {
 
 
 	public getOrientation(){
-		return this._lastOrientation;
+		 let orientation=extend({}, this._lastOrientation);
+
+		 orientation.bearing=(orientation.bearing + this._headingAdjust + 360 ) % 360;
+
+		 return orientation;
 	}
 	public getPosition(){
 		return this._lastPosition;
@@ -252,26 +142,9 @@ export class StreetView extends StreetViewBase {
 		const streetView = new com.google.android.gms.maps.StreetViewPanoramaView(this._context, streetViewPanoramaOptions);
 		this.nativeView = streetView;
 
-		this._markerLayer = new android.widget.FrameLayout(this._context);
-		this._markerLayer.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
-		                                     android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-		                                      android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
-
-
-		this._markerLayer.setClipChildren(false);
-		this._markerLayer.setClipToPadding(false);
-
-		streetView.addView(this._markerLayer);
-
-		this._markers0to180=this.makeView180('0','180');
-		this._markers180to360=this.makeView180('180','360');
-		//this._markers180to360.setBackgroundColor(android.graphics.Color.BLUE);
-
-
-		this._label('0', this._markers0to180, 'bottom-left');
-		this._label('180', this._markers0to180, 'top-right');
-		this._label('180', this._markers180to360, 'bottom-left');
-		this._label('360', this._markers180to360, 'top-right');
+		if(!this._streetViewMarkers){
+			this._streetViewMarkers=new StreetViewMarkers(this);
+		}
 
 		this.onceOrientation((orientation)=>{
 			this.alignMarkers();
@@ -280,104 +153,12 @@ export class StreetView extends StreetViewBase {
 		return this.nativeView;
 	}
 
-	private makeView180(labels){
-		let view=new android.widget.RelativeLayout(this._context);
-
-		view.setLayoutParams(new android.widget.FrameLayout.LayoutParams(Screen.mainScreen.widthPixels*2, 500));
-
-
-		view.setClipChildren(false);
-		view.setClipToPadding(false);
-	
-		//view.setBackgroundColor(android.graphics.Color.parseColor("#70"+this._H()+this._H()+this._H()));
-		
-		this._markerLayer.addView(view);
-
-		//view.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
-		//view.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
-
-		return view;
-	}
-
-
-
-
-	private _H(){
-		var h=((Math.round(Math.random()*255)).toString(16).toUpperCase())
-		if(h.length==1){
-			h='0'+h;
+	alignMarkers(){
+		if(this._streetViewMarkers){
+			this._streetViewMarkers.alignMarkers();
 		}
-		return h;
 	}
 
-
-	private _label(textContent, parentView, pos){
-
-
-		let text=new android.widget.TextView(this._context);
-
-		text.setText(textContent);
-		parentView.addView(text);
-
-		if(pos&&pos.indexOf('bottom')>=0){
-			text.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM);
-		}else{
-			text.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
-		}
-
-		if(pos&&pos.indexOf('right')>=0){
-			text.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
-		}else{
-			text.getLayoutParams().addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
-
-		}
-
-		text.setTranslationX(0);
-		text.setTranslationY(0);
-
-	}
-
-	
-	private alignMarkers(){
-		let orientation=this.getOrientation();
-		let bearing=orientation.bearing;
-		let tilt=orientation.tilt;
-		let zoom=orientation.zoom;
-
-		let width180=this._markers0to180.getWidth();
-
-		let offset=(Screen.mainScreen.widthPixels/2)-(bearing*(width180/180));//(this._markers0to180.getLayoutParams().width/180)*bearing;
-		console.log(JSON.stringify(orientation));
-
-		var z=Math.pow(2, zoom);
-
-		this._markers0to180.setLayoutParams(new android.widget.FrameLayout.LayoutParams(Screen.mainScreen.widthPixels*2*z, 500*z));
-		this._markers180to360.setLayoutParams(new android.widget.FrameLayout.LayoutParams(Screen.mainScreen.widthPixels*2*z, 500*z));
-
-		this._markers0to180.setTranslationX(offset>-width180?offset:offset+2*width180);	
-		this._markers180to360.setTranslationX(offset+((offset>0)?-1:1)*width180);
-
-
-		let y=(this._markerLayer.getHeight()/2)-(this._markers0to180.getHeight()/2);
-
-
-
-		y+=Math.sin(tilt*Math.PI/180)*Screen.mainScreen.heightPixels/2;
-
-		
-		this._markers0to180.setTranslationY(y);
-		this._markers180to360.setTranslationY(y);
-
-
-		//this._markers0to180.requestLayout();
-		//this._markers180to360.requestLayout();
-
-		var origin=this.getPosition();
-		this._markers.forEach((marker,i)=>{
-			this._alignMarker(marker, this._views[i], origin);
-		})
-	
-	}
 
 
 	public notifyAlign(orientation){
@@ -398,20 +179,10 @@ export class StreetView extends StreetViewBase {
 	public notifyClick(orientation){
 		console.log('click: '+JSON.stringify(orientation));
 
-		let closest=null;
-		let dist=Math.Infinity;
-		this._markers.forEach((m)=>{
-			
-			let b=orientation.bearing-m.userData.orientation.bearing;
-			let t=orientation.tilt-m.userData.orientation.tilt;
-
-			let distSqr=b*b+t*t; //no point computing sqrt since it is for comparison
-			if(distSqr<dist){
-				closest=m;
-				dist=distSqr;
-			}
-
-		});
+		if(this._streetViewMarkers){
+			//this is just for debugging
+			this._streetViewMarkers.notifyClick(orientation);
+		}
 	}
 
 	public oncePosition(){
@@ -506,11 +277,16 @@ export class StreetView extends StreetViewBase {
                 }));
 
 
-                 panorama.setOnStreetViewPanoramaClickListener(new  com.google.android.gms.maps.StreetViewPanorama.OnStreetViewPanoramaClickListener({
+                 panorama.setOnStreetViewPanoramaClickListener( new com.google.android.gms.maps.StreetViewPanorama.OnStreetViewPanoramaClickListener({
 
                  	onStreetViewPanoramaClick:(panoramaOrientation:com.google.android.gms.maps.model.StreetViewPanoramaOrientation)=>{
-                 		let orientation={bearing:panoramaOrientation.bearing, tilt:panoramaOrientation.tilt};
-                		owner.notifyClick(orientation); 
+                 		try{
+                 			let orientation={bearing:panoramaOrientation.bearing, tilt:panoramaOrientation.tilt};
+                			owner.notifyClick(orientation); 
+                		}catch(e){
+                			console.error(e);
+                			console.error('onStreetViewPanoramaClick error')
+                		}
                  	}
 
                  }));

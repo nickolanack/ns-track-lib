@@ -1,7 +1,9 @@
-import { ContentView } from "@nativescript/core";
-import { getRenderer } from 'tns-mobile-data-collector/src/utils';
+import { ContentView} from "@nativescript/core";
+import { getRenderer, extend } from 'tns-mobile-data-collector/src/utils';
 import { LayerLoader } from '../LayerLoader';
 import { FeatureLoader } from '../FeatureLoader';
+
+import { StreetViewMarkers } from "./overlay/StreetViewMarkers"
 
 
 import {Marker} from 'nativescript-google-maps-sdk';
@@ -14,6 +16,13 @@ export abstract class StreetViewBase extends ContentView {
 	protected _layers:any;
 
 	protected _headingAdjust:number=0;
+	protected _tiltAdjust:number=0;
+
+	protected _lastOrientation:any=null;
+	protected _lastPosition:any=null;
+
+	protected _streetViewMarkers:StreetViewMarkers=null;
+
 
 	public constructor(field?: any) {
 		super();
@@ -35,6 +44,18 @@ export abstract class StreetViewBase extends ContentView {
 
 	public getAltitude(){
 		return this.altitude;
+	}
+
+
+	public getOrientation(){
+		 let orientation=extend({}, this._lastOrientation);
+		 orientation.bearing=(orientation.bearing + this._headingAdjust + 360 ) % 360;
+		 orientation.tilt=(orientation.tilt + this._tiltAdjust );
+
+		 return orientation;
+	}
+	public getPosition(){
+		return this._lastPosition;
 	}
 
 
@@ -62,6 +83,12 @@ export abstract class StreetViewBase extends ContentView {
 			}
 		}
 
+
+		if(this.field.tiltAdjust){
+			if (typeof this.field.tiltAdjust == 'string' && this.field.tiltAdjust[0] == '{') {
+				this._tiltAdjust = this._renderer._parse(this.field.tiltAdjust);
+			}
+		}
 
 		if(this.field.heading){
 			if (typeof this.field.heading == 'string' && this.field.heading[0] == '{') {
@@ -113,8 +140,27 @@ export abstract class StreetViewBase extends ContentView {
 
 	}
 
+	public notifyAlign(orientation){
 
-	public abstract getOrientation():any;
+		
+
+		this._lastOrientation=orientation;
+
+		this.notify({
+			eventName: 'orientationChanged',
+			object: this,
+			orientation: orientation,
+
+		});
+        this.alignMarkers();
+	}
+
+
+	protected alignMarkers(){
+		if(this._streetViewMarkers){
+			this._streetViewMarkers.alignMarkers();
+		}
+	}
 
 
 	public addMarker(item:Object){
@@ -146,6 +192,39 @@ export abstract class StreetViewBase extends ContentView {
 			object: this,
 			marker: marker,
 		});
+	}
+
+
+
+	public oncePosition(){
+
+		if(this._lastPosition){
+			return Promise.resolve(this._lastPosition)
+		}
+
+		return new Promise((resolve)=>{
+			this.once("positionChanged", (event:any)=>{
+				resolve(event.position);
+			});
+		});
+
+	}
+
+
+	public onceOrientation(){
+
+		if(this._lastOrientation){
+			return Promise.resolve(this._lastOrientation)
+		}
+
+		return new Promise((resolve)=>{
+			this.once("orientationChanged", (event:any)=>{
+				resolve(event.orientation);
+			});
+		});
+
+
+
 	}
 
 

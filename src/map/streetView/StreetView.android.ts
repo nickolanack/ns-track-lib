@@ -10,9 +10,6 @@ export class StreetView extends StreetViewBase {
 
 	protected panorama: com.google.android.gms.maps.StreetViewPanoramaView|null;
 	
-	protected _streetViewMarkers:StreetViewMarkers=null;
-
-
 	public  setPanoId(id: string, callback?): Promise<void>{
 
 		return new Promise((resolve) => {
@@ -120,19 +117,6 @@ export class StreetView extends StreetViewBase {
 	};
 
 
-
-	public getOrientation(){
-		 let orientation=extend({}, this._lastOrientation);
-
-		 orientation.bearing=(orientation.bearing + this._headingAdjust + 360 ) % 360;
-
-		 return orientation;
-	}
-	public getPosition(){
-		return this._lastPosition;
-	}
-
-
 	createNativeView() {
 
 		const streetViewPanoramaOptions = new com.google.android.gms.maps.StreetViewPanoramaOptions();
@@ -153,28 +137,11 @@ export class StreetView extends StreetViewBase {
 		return this.nativeView;
 	}
 
-	alignMarkers(){
-		if(this._streetViewMarkers){
-			this._streetViewMarkers.alignMarkers();
-		}
-	}
+	
 
 
 
-	public notifyAlign(orientation){
-
-		
-
-		this._lastOrientation=orientation;
-
-		this.notify({
-			eventName: 'orientationChanged',
-			object: this,
-			orientation: orientation,
-
-		});
-        this.alignMarkers();
-	}
+	
 
 	public notifyClick(orientation){
 		console.log('click: '+JSON.stringify(orientation));
@@ -185,38 +152,7 @@ export class StreetView extends StreetViewBase {
 		}
 	}
 
-	public oncePosition(){
-
-		if(this._lastPosition){
-			return Promise.resolve(this._lastPosition)
-		}
-
-		return new Promise((resolve)=>{
-			this.once("positionChanged", (event)=>{
-				resolve(event.position);
-			});
-		});
-
-
-
-	}
-
-
-	public onceOrientation(){
-
-		if(this._lastOrientation){
-			return Promise.resolve(this._lastOrientation)
-		}
-
-		return new Promise((resolve)=>{
-			this.once("orientationChanged", (event)=>{
-				resolve(event.orientation);
-			});
-		});
-
-
-
-	}
+	
 
 
 
@@ -234,8 +170,6 @@ export class StreetView extends StreetViewBase {
 				owner.panorama = panorama;
 
 				
-                owner._lastOrientation=null;
-                owner._lastPosition=null;
 
                 panorama.setOnStreetViewPanoramaCameraChangeListener(new com.google.android.gms.maps.StreetViewPanorama.OnStreetViewPanoramaCameraChangeListener({
                 	onStreetViewPanoramaCameraChange:(camera:com.google.android.gms.maps.model.StreetViewPanoramaCamera)=>{
@@ -259,7 +193,7 @@ export class StreetView extends StreetViewBase {
 
                 		let position={latitude:location.position.latitude, longitude:location.position.longitude};
 
-                		if(JSON.stringify(this._lastPosition)!==JSON.stringify(position)){
+                		if(JSON.stringify(owner._lastPosition)!==JSON.stringify(position)){
                 			/**
                 			 * prevent too much logging
                 			 */

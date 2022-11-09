@@ -303,7 +303,7 @@ class LocalMapFeatures extends Observable {
 				});
 
 
-			})).then((marker)=>{
+			})).then((marker:any)=>{
 
 
 			
